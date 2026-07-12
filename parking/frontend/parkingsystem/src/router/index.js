@@ -9,16 +9,35 @@ const router = createRouter({
       component: () => import('../views/HomeView.vue')
     },
     {
-      path: '/vehicle-query',
-      name: 'vehicle-query',
-      component: () => import('../views/VehicleQueryView.vue')
+      path: '/resident',
+      name: 'resident',
+      component: () => import('../views/ResidentView.vue')
     },
     {
-      path: '/fee-settlement',
-      name: 'fee-settlement',
-      component: () => import('../views/FeeSettlementView.vue')
+      path: '/vehicle',
+      name: 'vehicle',
+      component: () => import('../views/VehicleView.vue')
+    },
+    {
+      path: '/fee',
+      name: 'fee',
+      component: () => import('../views/FeeView.vue')
+    },
+    {
+      path: '/parking-spots',
+      name: 'parking-spots',
+      component: () => import('../views/ParkingSpotsView.vue')
+    },
+    {
+      path: '/statistics',
+      name: 'statistics',
+      component: () => import('../views/StatisticsView.vue')
+    },
+    {
+      path: '/settings',
+      name: 'settings',
+      component: () => import('../views/SettingsView.vue')
     }
-    // 注意：不要有 DashboardView 的路由！
   ]
 })
 

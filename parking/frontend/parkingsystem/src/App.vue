@@ -1,157 +1,138 @@
 <template>
   <div class="app-container">
-    <!-- 顶部导航栏 -->
-    <el-header class="app-header">
-      <div class="header-content">
-        <div class="logo" @click="$router.push('/')">
-          <el-icon size="28"><Opportunity /></el-icon>
-          <span>智能停车系统</span>
-        </div>
-        
-        <el-menu 
-          :default-active="$route.path" 
-          mode="horizontal" 
-          router
-          class="nav-menu"
-        >
-          <el-menu-item index="/">
-            <el-icon><House /></el-icon>
-            首页
-          </el-menu-item>
-          <el-menu-item index="/vehicle-query">
-            <el-icon><Search /></el-icon>
-            实时车辆查询
-          </el-menu-item>
-          <el-menu-item index="/fee-settlement">
-            <el-icon><Money /></el-icon>
-            停车费结算
-          </el-menu-item>
-        </el-menu>
-        
-        <div class="user-info">
-          <el-dropdown>
-            <span class="user-name">
-              <el-avatar :size="32" :src="userAvatar" />
-              李滨瀚
-            </span>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item @click="handleProfile">个人中心</el-dropdown-item>
-                <el-dropdown-item @click="handleSettings">系统设置</el-dropdown-item>
-                <el-dropdown-item divided @click="handleLogout">退出登录</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-        </div>
+    <!-- 侧边导航 -->
+    <el-menu
+      :default-active="$route.path"
+      class="sidebar"
+      router
+      collapse-transition
+      background-color="#304156"
+      text-color="#bfcbd9"
+      active-text-color="#409EFF"
+    >
+      <div class="sidebar-logo">
+        <el-icon size="24" color="#409EFF"><Opportunity /></el-icon>
+        <span>智能停车系统</span>
       </div>
-    </el-header>
-    
+
+      <el-menu-item index="/">
+        <el-icon><House /></el-icon>
+        <span>首页</span>
+      </el-menu-item>
+      <el-menu-item index="/resident">
+        <el-icon><User /></el-icon>
+        <span>住户管理</span>
+      </el-menu-item>
+      <el-menu-item index="/vehicle">
+        <el-icon><Van /></el-icon>
+        <span>车辆管理</span>
+      </el-menu-item>
+      <el-menu-item index="/fee">
+        <el-icon><Money /></el-icon>
+        <span>费用结算</span>
+      </el-menu-item>
+      <el-menu-item index="/parking-spots">
+        <el-icon><Grid /></el-icon>
+        <span>车位监控</span>
+      </el-menu-item>
+      <el-menu-item index="/statistics">
+        <el-icon><DataAnalysis /></el-icon>
+        <span>数据统计</span>
+      </el-menu-item>
+      <el-menu-item index="/settings">
+        <el-icon><Setting /></el-icon>
+        <span>系统设置</span>
+      </el-menu-item>
+    </el-menu>
+
     <!-- 主内容区 -->
-    <el-main class="app-main">
-      <router-view />
-    </el-main>
-    
-    <!-- 页脚 -->
-    <el-footer class="app-footer">
-      <div class="footer-content">
-        <p>智能停车管理系统 © 2025 - 第10组项目</p>
-        <p>技术栈：Vue 3 + Element Plus + SpringBoot + Atlas 200DK</p>
-      </div>
-    </el-footer>
+    <div class="main-area">
+      <!-- 顶部栏 -->
+      <el-header class="app-header">
+        <div class="header-left">
+          <el-breadcrumb>
+            <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
+            <el-breadcrumb-item v-if="$route.meta?.title">{{ $route.meta.title }}</el-breadcrumb-item>
+          </el-breadcrumb>
+        </div>
+        <div class="header-right">
+          <el-avatar :size="32" src="https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png" />
+          <span class="user-name">管理员</span>
+        </div>
+      </el-header>
+
+      <!-- 内容 -->
+      <el-main class="app-main">
+        <router-view />
+      </el-main>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { 
-  Opportunity, House, Search, Money, Avatar 
+import {
+  Opportunity, House, User, Van, Money, Grid, DataAnalysis, Setting
 } from '@element-plus/icons-vue'
-
-const userAvatar = ref('https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png')
-
-const handleProfile = () => {
-  console.log('个人中心')
-}
-
-const handleSettings = () => {
-  console.log('系统设置')
-}
-
-const handleLogout = () => {
-  console.log('退出登录')
-}
 </script>
 
-<style scoped>
-/* 样式保持不变 */
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body, #app { height: 100%; }
+
 .app-container {
-  min-height: 100vh;
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* 侧边栏 */
+.sidebar {
+  width: 220px;
+  height: 100vh;
+  overflow-y: auto;
+  border-right: none !important;
+  flex-shrink: 0;
+}
+.sidebar-logo {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #fff;
+  font-size: 18px;
+  font-weight: bold;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+/* 主区域 */
+.main-area {
+  flex: 1;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .app-header {
   background: #fff;
   border-bottom: 1px solid #e4e7ed;
-  padding: 0;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-}
-
-.header-content {
-  max-width: 1400px;
-  margin: 0 auto;
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
   padding: 0 20px;
-  height: 100%;
+  height: 60px !important;
 }
-
-.logo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 20px;
-  font-weight: bold;
-  color: #409EFF;
-  cursor: pointer;
-}
-
-.nav-menu {
-  flex: 1;
-  justify-content: center;
-  border-bottom: none;
-}
-
-.user-info {
+.header-right {
   display: flex;
   align-items: center;
   gap: 10px;
 }
-
-.user-name {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-}
+.user-name { color: #606266; font-size: 14px; }
 
 .app-main {
   flex: 1;
   padding: 20px;
   background: #f5f7fa;
-}
-
-.app-footer {
-  background: #303133;
-  color: #fff;
-  text-align: center;
-  padding: 20px;
-}
-
-.footer-content p {
-  margin: 5px 0;
-  color: #c0c4cc;
-  font-size: 14px;
+  overflow-y: auto;
 }
 </style>
