@@ -20,4 +20,10 @@ public interface VehicleRepository extends JpaRepository<Vehicle, Long> {
 
     // 根据车牌号和状态查找
     Optional<Vehicle> findByPlateNumberAndStatus(String plateNumber, String status);
+
+    // 根据是否住户查找
+    List<Vehicle> findByIsResident(Boolean isResident);
+
+    // 统计在场车辆数
+    long countByStatus(String status);
 }

@@ -106,22 +106,12 @@ smart-parking:
     daily-max: 50.00   # 每日最高费用
   
   parking:
-    total-spots: 100   # 总车位数
+    total-spots: 200   # 总车位数
     floors:
       - name: "B1"
-        spots: 50
+        spots: 100
       - name: "B2"
-        spots: 50
-  
-  edge:
-    mqtt:
-      broker-url: tcp://localhost:1883
-      username: admin
-      password: admin123
-      client-id: smart-parking-edge
-      topics:
-        license-plate: smart-parking/license-plate
-        status: smart-parking/status
+        spots: 100
 
 # 跨域配置（开发环境）
 cors:

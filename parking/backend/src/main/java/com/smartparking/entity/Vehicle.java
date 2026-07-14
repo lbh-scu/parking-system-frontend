@@ -16,17 +16,23 @@ public class Vehicle {
     @Column(name = "plate_number", nullable = false, length = 20)
     private String plateNumber;           // 车牌号
 
+    @Column(name = "spot_id")
+    private Long spotId;                  // 车位ID（外键 -> parking_spot）
+
+    @Column(name = "spot_number", length = 10)
+    private String spotNumber;            // 车位编号（冗余字段）
+
     @Column(name = "entry_time")
     private LocalDateTime entryTime;      // 入场时间
 
     @Column(name = "exit_time")
     private LocalDateTime exitTime;       // 出场时间
 
-    @Column(name = "status", length = 20)
-    private String status = "PARKING";    // 状态: PARKING, EXITED
+    @Column(name = "is_resident")
+    private Boolean isResident = false;   // 是否住户车辆
 
-    @Column(name = "spot_number", length = 10)
-    private String spotNumber;            // 车位号
+    @Column(name = "status", length = 20)
+    private String status = "PARKING";    // 状态: PARKING / EXITED
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;      // 创建时间
