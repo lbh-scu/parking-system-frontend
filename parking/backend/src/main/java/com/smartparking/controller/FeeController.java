@@ -9,7 +9,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/fees")
+@RequestMapping("/fees")
 public class FeeController {
 
     @Autowired
