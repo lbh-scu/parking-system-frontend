@@ -29,6 +29,8 @@ public class VehicleService {
         vehicle.setSpotNumber(spotNumber);
         vehicle.setStatus("PARKING");
         vehicle.setEntryTime(LocalDateTime.now());
+        // isResident 后续由 1.2 任务接入 ResidentService 动态判断
+        vehicle.setIsResident(false);
 
         return vehicleRepository.save(vehicle);
     }
