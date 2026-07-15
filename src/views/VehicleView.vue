@@ -1,23 +1,21 @@
 <template>
   <div style="padding: 0;">
-    <!-- 车辆入场/查询切换 -->
-<el-card shadow="hover" class="mb-4">
-  <template #header>
-    <div style="display:flex;align-items:center;gap:10px;justify-content:space-between;">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <el-icon size="20" color="#409EFF"><Van /></el-icon>
-        <span>车辆管理</span>
-      </div>
-      <el-button type="success" size="small" @click="handleExport" style="display:flex;align-items:center;gap:4px;">
-        <span>📥</span> 导出 Excel
-      </el-button>
-    </div>
-  </template>
+    <el-card shadow="hover" class="mb-4">
+      <template #header>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <el-icon size="20" color="#409EFF"><Van /></el-icon>
+          <span>车辆管理</span>
+        </div>
+      </template>
       <el-tabs v-model="activeTab">
         <el-tab-pane label="车辆入场" name="entry">
-          <el-form :model="entryForm" label-width="100px" style="max-width:500px">
+          <el-form :model="entryForm" label-width="100px" style="max-width:520px">
             <el-form-item label="车牌号">
-              <LicensePlateInput v-model="entryForm.plate" ref="plateInputRef" :immediate-validate="false" />
+              <LicensePlateInput
+                v-model="entryForm.plate"
+                ref="plateInputRef"
+                :immediate-validate="false"
+              />
             </el-form-item>
             <el-form-item label="身份">
               <el-radio-group v-model="entryForm.isResident">
@@ -25,16 +23,17 @@
                 <el-radio :value="false">外来</el-radio>
               </el-radio-group>
             </el-form-item>
-            <el-form-item label="住户姓名" v-if="entryForm.isResident">
-              <el-input v-model="entryForm.residentName" placeholder="输入住户姓名" />
+            <el-form-item label="车位号">
+              <el-input v-model="entryForm.spotNumber" placeholder="如 A001（留空自动分配）" />
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" @click="handleEntry">确认入场</el-button>
+              <el-button type="primary" @click="handleEntry" :loading="loading">确认入场</el-button>
+              <el-button @click="resetForm">重置</el-button>
             </el-form-item>
           </el-form>
         </el-tab-pane>
-        <el-tab-pane label="在场车辆" name="query">
-          <VehicleQueryView />
+        <el-tab-pane label="在场车辆" name="parking">
+          <VehicleQueryView :key="queryKey" @exit-success="onExitSuccess" />
         </el-tab-pane>
       </el-tabs>
     </el-card>
@@ -42,30 +41,54 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Van } from '@element-plus/icons-vue'
-import VehicleQueryView from './VehicleQueryView.vue'
 import LicensePlateInput from '../components/vehicle/LicensePlateInput.vue'
+import VehicleQueryView from './VehicleQueryView.vue'
+import { vehicleApi } from '../api/index.js'
 
 const activeTab = ref('entry')
+const queryKey = ref(0)
+const loading = ref(false)
+const plateInputRef = ref(null)
 
 const entryForm = ref({
   plate: '',
   isResident: false,
-  residentName: ''
+  spotNumber: ''
 })
 
-const handleExport = () => {
-  window.location.href = '/api/vehicles/export'
-}
-
-const handleEntry = () => {
+async function handleEntry() {
   if (!entryForm.value.plate) {
     ElMessage.warning('请输入车牌号')
     return
   }
-  ElMessage.success(`车辆 ${entryForm.value.plate} 已入场`)
-  entryForm.value.plate = ''
+  loading.value = true
+  try {
+    const spot = entryForm.value.spotNumber || 'A001'
+    const res = await vehicleApi.entry(entryForm.value.plate, spot)
+    ElMessage.success(`车辆 ${res.data.plateNumber} 已入场，车位 ${res.data.spotNumber}`)
+    resetForm()
+    activeTab.value = 'parking'
+    queryKey.value++
+  } catch (e) {
+    ElMessage.error(e.message || '入场失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+function resetForm() {
+  entryForm.value = { plate: '', isResident: false, spotNumber: '' }
+  plateInputRef.value?.reset()
+}
+
+function onExitSuccess() {
+  nextTick(() => queryKey.value++)
 }
 </script>
+
+<style scoped>
+.mb-4 { margin-bottom: 20px; }
+</style>
