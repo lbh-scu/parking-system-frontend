@@ -82,24 +82,44 @@
         <div style="font-size: 18px; font-weight: 500; color: #303133;">
           在场车辆 <span style="color: #409EFF;">{{ filteredVehicles.length }}</span> 辆
         </div>
-        <button 
-          @click="refreshData"
-          style="
-            background: white;
-            color: #606266;
-            border: 1px solid #dcdfe6;
-            border-radius: 6px;
-            padding: 8px 16px;
-            font-size: 14px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-          "
-        >
-          <span>🔄</span>
-          刷新数据
-        </button>
+        <div style="display: flex; gap: 10px;">
+          <button 
+            @click="handleExport"
+            style="
+              background: #67C23A;
+              color: white;
+              border: none;
+              border-radius: 6px;
+              padding: 8px 16px;
+              font-size: 14px;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              gap: 6px;
+            "
+          >
+            <span>📥</span>
+            导出 Excel
+          </button>
+          <button 
+            @click="refreshData"
+            style="
+              background: white;
+              color: #606266;
+              border: 1px solid #dcdfe6;
+              border-radius: 6px;
+              padding: 8px 16px;
+              font-size: 14px;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              gap: 6px;
+            "
+          >
+            <span>🔄</span>
+            刷新数据
+          </button>
+        </div>
       </div>
       
       <!-- 车辆表格 -->
@@ -228,6 +248,10 @@ const handleReset = () => {
 
 const refreshData = () => {
   console.log('刷新数据')
+}
+
+const handleExport = () => {
+  window.location.href = '/api/vehicles/export'
 }
 
 const calculateDuration = (entryTime) => {
