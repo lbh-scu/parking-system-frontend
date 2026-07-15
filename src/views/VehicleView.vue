@@ -17,7 +17,7 @@
         <el-tab-pane label="车辆入场" name="entry">
           <el-form :model="entryForm" label-width="100px" style="max-width:500px">
             <el-form-item label="车牌号">
-              <el-input v-model="entryForm.plate" placeholder="例如：京A12345" />
+              <LicensePlateInput v-model="entryForm.plate" ref="plateInputRef" :immediate-validate="false" />
             </el-form-item>
             <el-form-item label="身份">
               <el-radio-group v-model="entryForm.isResident">
@@ -46,6 +46,7 @@ import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Van } from '@element-plus/icons-vue'
 import VehicleQueryView from './VehicleQueryView.vue'
+import LicensePlateInput from '../components/vehicle/LicensePlateInput.vue'
 
 const activeTab = ref('entry')
 
