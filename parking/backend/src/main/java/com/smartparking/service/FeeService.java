@@ -74,6 +74,13 @@ public class FeeService {
     }
 
     /**
+     * 获取全部费用记录（不分状态）
+     */
+    public List<Fee> getAllFees() {
+        return feeRepository.findAll();
+    }
+
+    /**
      * 获取收费统计
      */
     public BigDecimal getTotalRevenue() {

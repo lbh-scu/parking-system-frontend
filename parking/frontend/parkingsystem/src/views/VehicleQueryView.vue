@@ -6,9 +6,14 @@
           <span style="font-size:14px;color:#606266;">
             共 <strong style="color:#409EFF;">{{ parkingData.length }}</strong> 辆在场
           </span>
-          <el-button size="small" :loading="loadingParking" @click="loadParking">
-            <el-icon><Refresh /></el-icon> 刷新
-          </el-button>
+          <div style="display:flex;gap:8px;">
+            <el-button size="small" :loading="loadingParking" @click="loadParking">
+              <el-icon><Refresh /></el-icon> 刷新
+            </el-button>
+            <el-button size="small" type="success" @click="handleExport">
+              <el-icon><Download /></el-icon> 导出Excel
+            </el-button>
+          </div>
         </div>
         <el-table v-loading="loadingParking" :data="parkingData" stripe style="width:100%">
           <el-table-column prop="plateNumber" label="车牌号" width="140" />
@@ -35,6 +40,9 @@
             <template #prefix><el-icon><Search /></el-icon></template>
           </el-input>
           <el-button type="primary" @click="loadHistory" :loading="loadingHistory">查询</el-button>
+          <el-button type="success" @click="handleExport" style="margin-left:auto;">
+            <el-icon><Download /></el-icon> 导出Excel
+          </el-button>
         </div>
         <el-table v-loading="loadingHistory" :data="historyData" stripe style="width:100%">
           <el-table-column prop="plateNumber" label="车牌号" width="140" />
@@ -60,7 +68,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh, Search } from '@element-plus/icons-vue'
+import { Refresh, Search, Download } from '@element-plus/icons-vue'
 import { vehicleApi } from '../api/index.js'
 
 const emit = defineEmits(['exit-success'])
@@ -123,5 +131,9 @@ async function loadHistory() {
 function onTabChange(name) {
   if (name === 'parking') loadParking()
   if (name === 'history') loadHistory()
+}
+
+function handleExport() {
+  window.location.href = '/api/vehicles/export'
 }
 </script>
