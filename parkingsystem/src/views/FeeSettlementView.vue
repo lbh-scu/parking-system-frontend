@@ -361,6 +361,6 @@ function handlePrint() {
 function handleClear() { calculationResult.value = null }
 
 function handleExport() {
-  window.location.href = '/api/fees/export'
+  window.open('http://localhost:8080/api/fees/export', '_blank')
 }
 </script>

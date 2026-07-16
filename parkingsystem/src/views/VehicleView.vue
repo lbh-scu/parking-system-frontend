@@ -5,6 +5,9 @@
         <div style="display:flex;align-items:center;gap:10px;">
           <el-icon size="20" color="#409EFF"><Van /></el-icon>
           <span>车辆管理</span>
+          <el-button type="success" size="small" @click="handleExport" style="margin-left:auto">
+            <el-icon><Download /></el-icon> 导出Excel
+          </el-button>
         </div>
       </template>
       <el-tabs v-model="activeTab">
@@ -43,7 +46,7 @@
 <script setup>
 import { ref, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Van } from '@element-plus/icons-vue'
+import { Van, Download } from '@element-plus/icons-vue'
 import LicensePlateInput from '../components/vehicle/LicensePlateInput.vue'
 import VehicleQueryView from './VehicleQueryView.vue'
 import { vehicleApi } from '../api/index.js'
@@ -86,6 +89,10 @@ function resetForm() {
 
 function onExitSuccess() {
   nextTick(() => queryKey.value++)
+}
+
+function handleExport() {
+  window.open('http://localhost:8080/api/vehicles/export', '_blank')
 }
 </script>
 
