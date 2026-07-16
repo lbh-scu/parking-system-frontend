@@ -12,6 +12,9 @@
             <el-icon size="20" color="#409EFF"><UserFilled /></el-icon>
             <span>住户信息列表</span>
             <el-tag type="info" effect="plain" class="count-tag">共 {{ residents.length }} 人</el-tag>
+            <el-button type="success" size="small" @click="handleExport" style="margin-left:8px">
+              <el-icon><Download /></el-icon> 导出Excel
+            </el-button>
           </div>
         </template>
 
@@ -58,23 +61,43 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
-import { UserFilled, Edit, Plus, InfoFilled, Aim } from '@element-plus/icons-vue'
+import { ref, reactive, onMounted } from 'vue'
+import { UserFilled, Edit, Plus, InfoFilled, Aim, Download } from '@element-plus/icons-vue'
+import axios from 'axios'
+
+const API_BASE = 'http://localhost:8080/api'
 
 const residents = ref([])
-let nextId = 1
-
 const form = reactive({ name: '', plate: '' })
+
+// 从后端加载住户列表
+async function loadResidents() {
+  try {
+    const res = await axios.get(`${API_BASE}/residents`)
+    if (res.data?.code === 200) {
+      residents.value = res.data.data
+    }
+  } catch (e) {
+    console.error('加载住户列表失败', e)
+  }
+}
+
+onMounted(loadResidents)
 
 function handleAdd() {
   if (!form.name || !form.plate) return
   residents.value.push({
-    id: 'R' + String(nextId++).padStart(4, '0'),
+    id: 'R' + String(residents.value.length + 1).padStart(4, '0'),
     name: form.name,
     plate: form.plate.toUpperCase()
   })
   form.name = ''
   form.plate = ''
+}
+
+// 导出 Excel
+function handleExport() {
+  window.open(`${API_BASE}/residents/export`, '_blank')
 }
 </script>
 

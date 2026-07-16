@@ -1,255 +1,127 @@
 <template>
-  <div style="padding: 30px; max-width: 1400px; margin: 0 auto;">
-    <!-- 标题 -->
-    <div style="display: flex; align-items: center; margin-bottom: 30px;">
-      <div style="
-        width: 40px;
-        height: 40px;
-        background: #409EFF;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 15px;
-      ">
-        <span style="color: white; font-size: 20px;">🔍</span>
-      </div>
-      <h1 style="color: #303133; font-size: 32px; margin: 0;">实时车辆查询</h1>
-    </div>
-    
-    <!-- 搜索框 -->
-    <div style="background: white; border-radius: 12px; padding: 25px; margin-bottom: 30px; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);">
-      <div style="font-size: 18px; font-weight: 500; margin-bottom: 20px; color: #303133;">搜索车辆</div>
-      
-      <div style="display: flex; gap: 20px; align-items: center;">
-        <!-- 车牌搜索 -->
-        <div style="flex: 1;">
-          <div style="display: flex; align-items: center; background: #f5f7fa; border-radius: 8px; padding: 0 15px; height: 48px;">
-            <span style="margin-right: 10px; color: #909399;">🚗</span>
-            <input 
-              v-model="searchPlate" 
-              placeholder="输入车牌号查询..." 
-              style="border: none; background: transparent; outline: none; font-size: 16px; width: 100%;"
-              @keyup.enter="handleSearch"
-            />
-          </div>
+  <div>
+    <el-tabs v-model="activeSubTab" @tab-change="onTabChange">
+      <el-tab-pane label="在场车辆" name="parking">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <span style="font-size:14px;color:#606266;">
+            共 <strong style="color:#409EFF;">{{ parkingData.length }}</strong> 辆在场
+          </span>
+          <el-button size="small" :loading="loadingParking" @click="loadParking">
+            <el-icon><Refresh /></el-icon> 刷新
+          </el-button>
         </div>
-        
-        <!-- 搜索按钮 -->
-        <button 
-          @click="handleSearch"
-          style="
-            background: #409EFF;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 0 30px;
-            height: 48px;
-            font-size: 16px;
-            font-weight: 500;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-          "
-        >
-          <span>🔍</span>
-          查询
-        </button>
-        
-        <!-- 重置按钮 -->
-        <button 
-          @click="handleReset"
-          style="
-            background: white;
-            color: #606266;
-            border: 1px solid #dcdfe6;
-            border-radius: 8px;
-            padding: 0 20px;
-            height: 48px;
-            font-size: 16px;
-            cursor: pointer;
-          "
-        >
-          重置
-        </button>
-      </div>
-    </div>
-    
-    <!-- 车辆列表 -->
-    <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <div style="font-size: 18px; font-weight: 500; color: #303133;">
-          在场车辆 <span style="color: #409EFF;">{{ filteredVehicles.length }}</span> 辆
+        <el-table v-loading="loadingParking" :data="parkingData" stripe style="width:100%">
+          <el-table-column prop="plateNumber" label="车牌号" width="140" />
+          <el-table-column prop="spotNumber" label="车位" width="100" />
+          <el-table-column prop="entryTime" label="入场时间" />
+          <el-table-column label="身份" width="90">
+            <template #default="{ row }">
+              <el-tag :type="row.isResident ? 'success' : 'warning'" size="small">
+                {{ row.isResident ? '住户' : '外来' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="120">
+            <template #default="{ row }">
+              <el-button type="warning" size="small" @click="handleExit(row)" :loading="exitingId === row.id">出场结算</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-empty v-if="!loadingParking && parkingData.length === 0" description="暂无在场车辆" />
+      </el-tab-pane>
+      <el-tab-pane label="历史记录" name="history">
+        <div style="display:flex;gap:12px;margin-bottom:16px;">
+          <el-input v-model="historyKeyword" placeholder="按车牌号筛选" clearable style="width:260px" @keyup.enter="loadHistory" @clear="loadHistory">
+            <template #prefix><el-icon><Search /></el-icon></template>
+          </el-input>
+          <el-button type="primary" @click="loadHistory" :loading="loadingHistory">查询</el-button>
         </div>
-        <button 
-          @click="refreshData"
-          style="
-            background: white;
-            color: #606266;
-            border: 1px solid #dcdfe6;
-            border-radius: 6px;
-            padding: 8px 16px;
-            font-size: 14px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-          "
-        >
-          <span>🔄</span>
-          刷新数据
-        </button>
-      </div>
-      
-      <!-- 车辆表格 -->
-      <div v-if="filteredVehicles.length > 0" style="overflow-x: auto;">
-        <table style="width: 100%; border-collapse: collapse;">
-          <thead>
-            <tr style="background: #f5f7fa;">
-              <th style="padding: 15px; text-align: left; color: #606266; font-weight: 500; border-bottom: 1px solid #e4e7ed;">车牌号</th>
-              <th style="padding: 15px; text-align: left; color: #606266; font-weight: 500; border-bottom: 1px solid #e4e7ed;">入场时间</th>
-              <th style="padding: 15px; text-align: left; color: #606266; font-weight: 500; border-bottom: 1px solid #e4e7ed;">停车时长</th>
-              <th style="padding: 15px; text-align: left; color: #606266; font-weight: 500; border-bottom: 1px solid #e4e7ed;">状态</th>
-              <th style="padding: 15px; text-align: left; color: #606266; font-weight: 500; border-bottom: 1px solid #e4e7ed;">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="vehicle in filteredVehicles" :key="vehicle.id" style="border-bottom: 1px solid #f5f7fa;">
-              <td style="padding: 15px; font-weight: 500;">{{ vehicle.plate }}</td>
-              <td style="padding: 15px;">{{ vehicle.entryTime }}</td>
-              <td style="padding: 15px;">{{ calculateDuration(vehicle.entryTime) }}</td>
-              <td style="padding: 15px;">
-                <span 
-                  style="
-                    display: inline-block;
-                    padding: 4px 12px;
-                    border-radius: 4px;
-                    font-size: 12px;
-                    font-weight: 500;
-                    background: #f0f9eb;
-                    color: #67C23A;
-                  "
-                >
-                  停车中
-                </span>
-              </td>
-              <td style="padding: 15px;">
-                <button 
-                  @click="handleExit(vehicle)"
-                  style="
-                    background: #E6A23C;
-                    color: white;
-                    border: none;
-                    border-radius: 6px;
-                    padding: 8px 16px;
-                    font-size: 14px;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                  "
-                >
-                  <span>💰</span>
-                  出场结算
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      
-      <!-- 无数据提示 -->
-      <div v-else style="text-align: center; padding: 60px 20px; color: #909399;">
-        <div style="font-size: 48px; margin-bottom: 20px;">🚗</div>
-        <div style="font-size: 18px; margin-bottom: 10px;">没有找到车辆</div>
-        <div style="color: #606266;">尝试修改搜索条件或刷新数据</div>
-      </div>
-    </div>
-    
-    <!-- 停车场统计 -->
-    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 30px;">
-      <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1); text-align: center;">
-        <div style="font-size: 32px; font-weight: bold; color: #67C23A;">{{ parkingStats.totalSpots }}</div>
-        <div style="color: #606266; margin-top: 8px;">总车位数</div>
-      </div>
-      
-      <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1); text-align: center;">
-        <div style="font-size: 32px; font-weight: bold; color: #F56C6C;">{{ parkingStats.occupiedSpots }}</div>
-        <div style="color: #606266; margin-top: 8px;">已占用车位</div>
-      </div>
-    </div>
+        <el-table v-loading="loadingHistory" :data="historyData" stripe style="width:100%">
+          <el-table-column prop="plateNumber" label="车牌号" width="140" />
+          <el-table-column prop="spotNumber" label="车位" width="100" />
+          <el-table-column prop="entryTime" label="入场时间" />
+          <el-table-column prop="exitTime" label="出场时间">
+            <template #default="{ row }">{{ row.exitTime || '—' }}</template>
+          </el-table-column>
+          <el-table-column label="状态" width="90">
+            <template #default="{ row }">
+              <el-tag :type="row.status === 'EXITED' ? 'info' : 'success'" size="small">
+                {{ row.status === 'EXITED' ? '已出场' : '在场' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-empty v-if="!loadingHistory && historyData.length === 0" description="暂无历史记录" />
+      </el-tab-pane>
+    </el-tabs>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Refresh, Search } from '@element-plus/icons-vue'
+import { vehicleApi } from '../api/index.js'
 
-const router = useRouter()
+const emit = defineEmits(['exit-success'])
+const activeSubTab = ref('parking')
+const parkingData = ref([])
+const loadingParking = ref(false)
+const exitingId = ref(null)
+const historyData = ref([])
+const loadingHistory = ref(false)
+const historyKeyword = ref('')
 
-// 搜索条件
-const searchPlate = ref('')
+onMounted(() => { loadParking() })
 
-// 停车场统计
-const parkingStats = ref({
-  totalSpots: 200,
-  occupiedSpots: 150
-})
-
-// 模拟数据 - 只有停车中的车辆
-const vehicles = ref([
-  { id: 1, plate: '京A12345', entryTime: '2025-12-06 10:30:25' },
-  { id: 2, plate: '京B67890', entryTime: '2025-12-06 10:25:18' },
-  { id: 3, plate: '京C24680', entryTime: '2025-12-06 10:15:42' },
-  { id: 4, plate: '京D13579', entryTime: '2025-12-06 11:20:33' },
-  { id: 5, plate: '京E97531', entryTime: '2025-12-06 11:10:15' }
-])
-
-// 计算过滤后的车辆
-const filteredVehicles = computed(() => {
-  if (!searchPlate.value) {
-    return vehicles.value
+async function loadParking() {
+  loadingParking.value = true
+  try {
+    const res = await vehicleApi.parking()
+    parkingData.value = res.data || []
+  } catch (e) {
+    ElMessage.error('获取在场车辆失败：' + e.message)
+    parkingData.value = []
+  } finally {
+    loadingParking.value = false
   }
-  
-  return vehicles.value.filter(vehicle => 
-    vehicle.plate.includes(searchPlate.value)
-  )
-})
-
-// 方法
-const handleSearch = () => {
-  console.log('搜索车牌:', searchPlate.value)
 }
 
-const handleReset = () => {
-  searchPlate.value = ''
+async function handleExit(row) {
+  try {
+    await ElMessageBox.confirm(`确定出场车辆 ${row.plateNumber}？`, '出场确认', {
+      confirmButtonText: '确定出场', cancelButtonText: '取消', type: 'warning'
+    })
+  } catch { return }
+  exitingId.value = row.id
+  try {
+    const res = await vehicleApi.exit(row.plateNumber)
+    ElMessage.success(`车辆 ${res.data.plateNumber} 出场成功`)
+    parkingData.value = parkingData.value.filter(v => v.id !== row.id)
+    emit('exit-success')
+  } catch (e) {
+    ElMessage.error(e.message || '出场失败')
+  } finally {
+    exitingId.value = null
+  }
 }
 
-const refreshData = () => {
-  console.log('刷新数据')
+async function loadHistory() {
+  loadingHistory.value = true
+  try {
+    const kw = historyKeyword.value || ''
+    const res = await vehicleApi.history(kw)
+    historyData.value = res.data || []
+  } catch (e) {
+    ElMessage.error('获取历史记录失败：' + e.message)
+    historyData.value = []
+  } finally {
+    loadingHistory.value = false
+  }
 }
 
-const calculateDuration = (entryTime) => {
-  const entry = new Date(entryTime)
-  const now = new Date()
-  const diff = now - entry
-  const hours = Math.floor(diff / (1000 * 60 * 60))
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-  return `${hours}小时${minutes}分钟`
-}
-
-const handleExit = (vehicle) => {
-  // 1. 存储到 localStorage 供结算页面使用
-  localStorage.setItem('pendingSettlement', JSON.stringify(vehicle))
-  
-  // 2. 从当前列表中移除
-  vehicles.value = vehicles.value.filter(v => v.id !== vehicle.id)
-  
-  // 3. 更新统计
-  parkingStats.value.occupiedSpots = vehicles.value.length
-  
-  // 4. 跳转到结算页面
-  router.push('/fee-settlement')
+function onTabChange(name) {
+  if (name === 'parking') loadParking()
+  if (name === 'history') loadHistory()
 }
 </script>

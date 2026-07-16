@@ -39,7 +39,13 @@
         </div>
 
         <div style="background:white;border-radius:12px;padding:25px;box-shadow:0 2px 12px 0 rgba(0,0,0,0.1);">
-          <div style="font-size:18px;font-weight:500;margin-bottom:20px;color:#303133;">今日收费统计</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <div style="font-size:18px;font-weight:500;color:#303133;">今日收费统计</div>
+            <button @click="handleExport"
+              style="background:#67C23A;color:white;border:none;border-radius:6px;padding:6px 14px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:5px;">
+              <span>📥</span> 导出 Excel
+            </button>
+          </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
             <div style="text-align:center;padding:20px;background:linear-gradient(135deg,#ecf5ff,#d9ecff);border-radius:8px;">
               <div style="font-size:32px;font-weight:bold;color:#409EFF;">¥ {{ todayStats.total }}</div>
@@ -353,4 +359,8 @@ function handlePrint() {
 }
 
 function handleClear() { calculationResult.value = null }
+
+function handleExport() {
+  window.location.href = '/api/fees/export'
+}
 </script>
