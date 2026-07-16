@@ -54,10 +54,6 @@ $RECYCLE.BIN/
 .env
 .env.local
 
-# H2 Database
-**/data/
-!**/data/.gitkeep
-
 # Test
 coverage/
 test-results/
