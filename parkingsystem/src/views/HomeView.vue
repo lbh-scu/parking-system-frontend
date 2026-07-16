@@ -1,23 +1,10 @@
 <template>
   <div class="dashboard">
-    <!-- 欢迎横幅 -->
-    <div class="welcome-banner">
-      <div class="welcome-text">
-        <h2>欢迎回来，管理员</h2>
-        <p>阳光小区停车库运行正常，今日已有 {{ stats.todayCars }} 辆车进出</p>
-      </div>
-      <div class="welcome-time">
-        <el-icon size="28" color="#fff"><Clock /></el-icon>
-        <span class="current-time">{{ currentTime }}</span>
-      </div>
-    </div>
-
-    <!-- 统计卡片 -->
     <el-row :gutter="20" class="stat-cards">
       <el-col :span="6">
-        <el-card shadow="never" class="stat-card" style="border-radius:12px;border:1px solid #ebeef5;">
+        <el-card shadow="hover" class="stat-card">
           <div class="stat-card-inner">
-            <div class="stat-icon" style="background:linear-gradient(135deg,#ecf5ff,#d9ecff)">
+            <div class="stat-icon" style="background:#ecf5ff">
               <el-icon size="28" color="#409EFF"><Van /></el-icon>
             </div>
             <div class="stat-info">
@@ -28,9 +15,9 @@
         </el-card>
       </el-col>
       <el-col :span="6">
-        <el-card shadow="never" class="stat-card" style="border-radius:12px;border:1px solid #ebeef5;">
+        <el-card shadow="hover" class="stat-card">
           <div class="stat-card-inner">
-            <div class="stat-icon" style="background:linear-gradient(135deg,#f0f9eb,#dbf0d0)">
+            <div class="stat-icon" style="background:#f0f9eb">
               <el-icon size="28" color="#67C23A"><CircleCheck /></el-icon>
             </div>
             <div class="stat-info">
@@ -41,9 +28,9 @@
         </el-card>
       </el-col>
       <el-col :span="6">
-        <el-card shadow="never" class="stat-card" style="border-radius:12px;border:1px solid #ebeef5;">
+        <el-card shadow="hover" class="stat-card">
           <div class="stat-card-inner">
-            <div class="stat-icon" style="background:linear-gradient(135deg,#fef0f0,#fcd5d5)">
+            <div class="stat-icon" style="background:#fef0f0">
               <el-icon size="28" color="#F56C6C"><Remove /></el-icon>
             </div>
             <div class="stat-info">
@@ -54,9 +41,9 @@
         </el-card>
       </el-col>
       <el-col :span="6">
-        <el-card shadow="never" class="stat-card" style="border-radius:12px;border:1px solid #ebeef5;">
+        <el-card shadow="hover" class="stat-card">
           <div class="stat-card-inner">
-            <div class="stat-icon" style="background:linear-gradient(135deg,#fdf6ec,#fce8c8)">
+            <div class="stat-icon" style="background:#fdf6ec">
               <el-icon size="28" color="#E6A23C"><Money /></el-icon>
             </div>
             <div class="stat-info">
@@ -68,100 +55,76 @@
       </el-col>
     </el-row>
 
-    <!-- 快捷操作 -->
-    <el-card shadow="never" class="quick-actions" style="border-radius:12px;border:1px solid #ebeef5;">
-      <template #header>
-        <div class="card-header-inner">
-          <el-icon size="18" color="#409EFF"><Opportunity /></el-icon>
-          <span>快捷操作</span>
-        </div>
-      </template>
-      <el-row :gutter="20">
-        <el-col :span="6" v-for="action in quickActions" :key="action.path">
-          <el-button :type="action.type" class="action-btn" @click="$router.push(action.path)">
-            <el-icon :size="22"><component :is="action.icon" /></el-icon>
-            <span>{{ action.label }}</span>
-          </el-button>
-        </el-col>
-      </el-row>
-    </el-card>
-
-    <!-- 最近入场车辆 + 今日概况 -->
-    <el-row :gutter="20">
-      <el-col :span="16">
-        <el-card shadow="never" style="border-radius:12px;border:1px solid #ebeef5;">
-          <template #header>
-            <div class="card-header-inner">
-              <el-icon size="18" color="#409EFF"><List /></el-icon>
-              <span>最近入场车辆</span>
-            </div>
-          </template>
-          <el-table :data="recentVehicles" stripe style="width:100%">
-            <el-table-column prop="plate" label="车牌号" width="150" />
-            <el-table-column prop="entryTime" label="入场时间" />
-            <el-table-column label="身份" width="100">
-              <template #default="{ row }">
-                <el-tag :type="row.isResident ? 'success' : 'warning'" size="small">
-                  {{ row.isResident ? '住户' : '外来' }}
-                </el-tag>
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-card>
-      </el-col>
-      <el-col :span="8">
-        <el-card shadow="never" style="border-radius:12px;border:1px solid #ebeef5;">
-          <template #header>
-            <div class="card-header-inner">
-              <el-icon size="18" color="#409EFF"><DataBoard /></el-icon>
-              <span>今日概况</span>
-            </div>
-          </template>
-          <div class="today-overview">
-            <div class="overview-item">
-              <span class="overview-label">进场车辆</span>
-              <span class="overview-value">{{ stats.inCars }}</span>
-            </div>
-            <div class="overview-item">
-              <span class="overview-label">出场车辆</span>
-              <span class="overview-value">{{ stats.outCars }}</span>
-            </div>
-            <div class="overview-item">
-              <span class="overview-label">当前停放</span>
-              <span class="overview-value">{{ stats.occupiedSpots }}</span>
-            </div>
-            <div class="overview-item">
-              <span class="overview-label">月卡住户</span>
-              <span class="overview-value">{{ stats.residents }}</span>
-            </div>
-            <div class="overview-item">
-              <span class="overview-label">空闲车位</span>
-              <span class="overview-value" style="color:#67C23A">{{ stats.freeSpots }}</span>
+    <el-row :gutter="20" class="mb-20">
+      <el-col :span="12">
+        <el-card shadow="hover" style="height:220px;">
+          <template #header><span>车位占用率</span></template>
+          <div style="display:flex;align-items:center;justify-content:center;height:130px;gap:40px;">
+            <div ref="gaugeRef" style="width:140px;height:140px;"></div>
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                <span style="width:10px;height:10px;border-radius:50%;background:#F56C6C;display:inline-block;"></span>
+                <span style="color:#606266;">已占用</span>
+                <strong style="font-size:18px;color:#303133;">{{ stats.occupiedSpots }}</strong>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                <span style="width:10px;height:10px;border-radius:50%;background:#67C23A;display:inline-block;"></span>
+                <span style="color:#606266;">空闲</span>
+                <strong style="font-size:18px;color:#303133;">{{ stats.freeSpots }}</strong>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="width:10px;height:10px;border-radius:50%;background:#E6A23C;display:inline-block;"></span>
+                <span style="color:#606266;">占用率</span>
+                <strong style="font-size:18px;color:#E6A23C;">{{ occupancyRate }}%</strong>
+              </div>
             </div>
           </div>
         </el-card>
       </el-col>
+      <el-col :span="12">
+        <el-card shadow="hover" style="height:220px;">
+          <template #header><span>快捷操作</span></template>
+          <el-row :gutter="15">
+            <el-col :span="6" v-for="action in quickActions" :key="action.path">
+              <el-button :type="action.type" class="action-btn" @click="$router.push(action.path)">
+                <el-icon :size="20"><component :is="action.icon" /></el-icon><span>{{ action.label }}</span>
+              </el-button>
+            </el-col>
+          </el-row>
+        </el-card>
+      </el-col>
     </el-row>
+
+    <el-card shadow="hover">
+      <template #header><span>最近入场车辆</span></template>
+      <el-table :data="recentVehicles" stripe style="width:100%">
+        <el-table-column prop="plate" label="车牌号" width="150" />
+        <el-table-column prop="entryTime" label="入场时间" />
+        <el-table-column label="身份" width="100">
+          <template #default="{ row }">
+            <el-tag :type="row.isResident ? 'success' : 'warning'" size="small">{{ row.isResident ? '住户' : '外来' }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="120">
+          <template #default="{ row }">
+            <el-button type="primary" link size="small" @click="$router.push('/vehicle')">查看</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { Van, CircleCheck, Remove, Money, Opportunity, List, DataBoard, Clock } from '@element-plus/icons-vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import * as echarts from 'echarts'
+import { Van, CircleCheck, Remove, Money } from '@element-plus/icons-vue'
 
-const currentTime = ref('')
+const gaugeRef = ref(null)
+let gaugeChart = null
 
-function updateTime() {
-  const now = new Date()
-  currentTime.value = now.toLocaleString('zh-CN', { hour12: false })
-}
-
-onMounted(() => { updateTime(); setInterval(updateTime, 1000) })
-
-const stats = ref({
-  totalSpots: 210, freeSpots: 123, occupiedSpots: 85,
-  todayIncome: 3240, todayCars: 46, inCars: 28, outCars: 18, residents: 85
-})
+const stats = ref({ totalSpots: 200, freeSpots: 115, occupiedSpots: 85, todayIncome: 3240 })
+const occupancyRate = computed(() => ((stats.value.occupiedSpots / stats.value.totalSpots) * 100).toFixed(0))
 
 const quickActions = [
   { label: '车辆入场', path: '/vehicle', icon: 'Van', type: 'primary' },
@@ -171,44 +134,53 @@ const quickActions = [
 ]
 
 const recentVehicles = ref([
-  { plate: '京A12345', entryTime: '2026-07-15 14:30:25', isResident: true },
-  { plate: '京B67890', entryTime: '2026-07-15 14:25:18', isResident: false },
-  { plate: '京C24680', entryTime: '2026-07-15 14:15:42', isResident: true },
-  { plate: '京D13579', entryTime: '2026-07-15 13:20:33', isResident: false },
-  { plate: '京E97531', entryTime: '2026-07-15 13:10:15', isResident: true }
+  { plate: '京A12345', entryTime: '2026-07-14 13:47:27', isResident: false },
+  { plate: '京B66666', entryTime: '2026-07-14 13:48:02', isResident: false },
+  { plate: '京C24680', entryTime: '2026-07-14 15:15:42', isResident: true },
+  { plate: '京D13579', entryTime: '2026-07-14 14:20:33', isResident: false },
+  { plate: '京E97531', entryTime: '2026-07-14 14:10:15', isResident: true }
 ])
+
+onMounted(() => {
+  gaugeChart = echarts.init(gaugeRef.value)
+  renderGauge()
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+  gaugeChart?.dispose()
+})
+
+function handleResize() { gaugeChart?.resize() }
+
+function renderGauge() {
+  const rate = occupancyRate.value
+  const color = rate > 80 ? '#F56C6C' : rate > 50 ? '#E6A23C' : '#67C23A'
+  gaugeChart.setOption({
+    series: [{
+      type: 'pie', radius: ['65%', '85%'], avoidLabelOverlap: false, silent: true,
+      label: { show: false }, emphasis: { scale: false },
+      data: [
+        { value: stats.value.occupiedSpots, itemStyle: { color } },
+        { value: stats.value.freeSpots, itemStyle: { color: '#ebeef5' } }
+      ]
+    }],
+    graphic: [{
+      type: 'text', left: 'center', top: 'center',
+      style: { text: `${rate}%`, fontSize: 24, fontWeight: 'bold', fill: color, textAlign: 'center', textVerticalAlign: 'middle' }
+    }]
+  })
+}
 </script>
 
 <style scoped>
 .dashboard { max-width: 1400px; margin: 0 auto; }
-
-.welcome-banner {
-  background: linear-gradient(135deg, #409EFF 0%, #337ecc 100%);
-  border-radius: 12px; padding: 28px 32px; margin-bottom: 24px;
-  display: flex; justify-content: space-between; align-items: center;
-}
-.welcome-text h2 { color: #fff; font-size: 22px; margin-bottom: 6px; }
-.welcome-text p { color: rgba(255,255,255,.85); font-size: 14px; }
-.welcome-time { display: flex; align-items: center; gap: 10px; }
-.current-time { color: #fff; font-size: 20px; font-weight: 600; }
-
 .stat-cards { margin-bottom: 20px; }
+.mb-20 { margin-bottom: 20px; }
 .stat-card-inner { display: flex; align-items: center; gap: 15px; }
 .stat-icon { width: 56px; height: 56px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
 .stat-value { font-size: 28px; font-weight: bold; color: #303133; }
 .stat-label { font-size: 14px; color: #909399; margin-top: 4px; }
-
-.quick-actions { margin-bottom: 20px; }
-.card-header-inner { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; }
-
-.action-btn {
-  width: 100%; height: 80px; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 6px; font-size: 14px; border-radius: 8px;
-}
-
-.today-overview { display: flex; flex-direction: column; gap: 12px; }
-.overview-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #ebeef5; }
-.overview-item:last-child { border-bottom: none; }
-.overview-label { font-size: 14px; color: #606266; }
-.overview-value { font-size: 16px; font-weight: bold; color: #303133; }
+.action-btn { width: 100%; height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-size: 14px; border-radius: 8px; }
 </style>
