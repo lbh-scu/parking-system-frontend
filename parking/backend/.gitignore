@@ -1,4 +1,3 @@
-# Java
 target/
 *.class
 *.jar
@@ -28,21 +27,6 @@ buildNumber.properties
 *.swo
 *~
 .DS_Store
-.vscode/
-
-# Node
-node_modules/
-dist/
-.npm
-.yarn
-.env.development.local
-.env.test.local
-.env.production.local
-*.tsbuildinfo
-
-# Logs
-logs/
-*.log
 
 # OS
 Thumbs.db
@@ -50,14 +34,14 @@ ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 
+# H2 Database
+data/
+!data/.gitkeep
+
+# Logs
+logs/
+*.log
+
 # Env
 .env
 .env.local
-
-# H2 Database
-**/data/
-!**/data/.gitkeep
-
-# Test
-coverage/
-test-results/
