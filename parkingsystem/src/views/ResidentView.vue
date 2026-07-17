@@ -62,10 +62,9 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import { UserFilled, Edit, Plus, InfoFilled, Aim, Download } from '@element-plus/icons-vue'
-import axios from 'axios'
-
-const API_BASE = 'http://localhost:8080/api'
+import { residentApi } from '../api/index.js'
 
 const residents = ref([])
 const form = reactive({ name: '', plate: '' })
@@ -73,31 +72,32 @@ const form = reactive({ name: '', plate: '' })
 // 从后端加载住户列表
 async function loadResidents() {
   try {
-    const res = await axios.get(`${API_BASE}/residents`)
-    if (res.data?.code === 200) {
-      residents.value = res.data.data
-    }
+    const res = await residentApi.list()
+    residents.value = res.data || []
   } catch (e) {
-    console.error('加载住户列表失败', e)
+    ElMessage.error('加载住户列表失败：' + e.message)
+    residents.value = []
   }
 }
 
 onMounted(loadResidents)
 
-function handleAdd() {
+async function handleAdd() {
   if (!form.name || !form.plate) return
-  residents.value.push({
-    id: 'R' + String(residents.value.length + 1).padStart(4, '0'),
-    userName: form.name,
-    plateNumber: form.plate.toUpperCase()
-  })
-  form.name = ''
-  form.plate = ''
+  try {
+    await residentApi.add(form.name, form.plate.toUpperCase())
+    ElMessage.success('住户添加成功')
+    form.name = ''
+    form.plate = ''
+    await loadResidents()
+  } catch (e) {
+    ElMessage.error('添加住户失败：' + e.message)
+  }
 }
 
 // 导出 Excel
 function handleExport() {
-  window.open(`${API_BASE}/residents/export`, '_blank')
+  residentApi.exportExcel()
 }
 </script>
 

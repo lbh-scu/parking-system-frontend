@@ -268,6 +268,8 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
+import { feeApi } from '../api/index.js'
 
 const exitedVehicles = ref([])
 const selectedVehicle = ref(null)
@@ -285,82 +287,111 @@ const paymentMethods = [
 const currentMethodIcon = computed(() => paymentMethods.find(m => m.key === selectedPayment.value)?.icon || '💚')
 const currentMethodLabel = computed(() => paymentMethods.find(m => m.key === selectedPayment.value)?.label || '微信支付')
 
-const todayStats = ref({ total: '3,240', vehicleCount: '85' })
-const todayRecords = ref([
-  { id: 1, plate: '京A12345', fee: '¥15', paymentTime: '12:46:10' },
-  { id: 2, plate: '京C24680', fee: '¥10', paymentTime: '11:31:05' },
-  { id: 3, plate: '京D13579', fee: '¥21', paymentTime: '13:21:30' },
-  { id: 4, plate: '京E97531', fee: '¥28', paymentTime: '14:16:05' },
-  { id: 5, plate: '京F11223', fee: '¥9', paymentTime: '10:25:15' },
-  { id: 6, plate: '京G33445', fee: '¥12', paymentTime: '15:30:20' }
-])
+const todayStats = ref({ total: '0', vehicleCount: '0' })
+const todayRecords = ref([])
 
-const initialExitedVehicles = [
-  { id: 1, plate: '京A12345', entryTime: '2025-12-06 10:30:25' },
-  { id: 2, plate: '京B67890', entryTime: '2025-12-06 10:25:18' },
-  { id: 3, plate: '京C24680', entryTime: '2025-12-06 10:15:42' }
-]
+onMounted(() => {
+  loadPendingFees()
+  loadStatistics()
+})
 
-onMounted(() => loadExitedVehicles())
-
-function loadExitedVehicles() {
-  const pending = localStorage.getItem('pendingSettlement')
-  if (pending) {
-    const newVehicle = JSON.parse(pending)
-    newVehicle.id = Date.now()
-    newVehicle.exitTime = new Date().toLocaleString()
-    exitedVehicles.value.push(newVehicle)
-    localStorage.removeItem('pendingSettlement')
-  }
-  if (exitedVehicles.value.length === 0) {
-    initialExitedVehicles.forEach(v => { v.exitTime = new Date().toLocaleString(); exitedVehicles.value.push(v) })
+// 从后端加载待结算车辆（通过 /fees/pending 获取状态为 PAID 的车辆）
+async function loadPendingFees() {
+  try {
+    const res = await feeApi.pending()
+    // 后端返回 List<Fee>，取最后几条展示
+    const fees = res.data || []
+    // 筛选状态为 PENDING 的费用记录转为前端展示格式
+    exitedVehicles.value = fees.map(f => ({
+      id: f.id,
+      plateNumber: f.plateNumber,
+      plate: f.plateNumber,
+      entryTime: f.entryTime,
+      exitTime: f.exitTime || '',
+      duration: f.parkingHours ? f.parkingHours + '小时' : ''
+    }))
+  } catch (e) {
+    ElMessage.error('获取待结算车辆失败：' + e.message)
   }
 }
 
-function selectVehicle(v) { selectedVehicle.value = v; calculationResult.value = null }
-function clearSelection() { selectedVehicle.value = null; calculationResult.value = null }
+// 加载收费统计
+async function loadStatistics() {
+  try {
+    const res = await feeApi.statistics()
+    const totalRevenue = res.data || 0
+    todayStats.value.total = totalRevenue.toFixed(2)
+    // 从 pending 列表获取已结算数量做参考
+  } catch (e) {
+    // 静默处理
+  }
+}
 
-function handleCalculateFee(vehicle) {
+function selectVehicle(v) {
+  selectedVehicle.value = v
+  calculationResult.value = null
+}
+
+function clearSelection() {
+  selectedVehicle.value = null
+  calculationResult.value = null
+}
+
+async function handleCalculateFee(vehicle) {
   if (!vehicle) return
   calculating.value = true
-  setTimeout(() => {
-    const entryTime = new Date(vehicle.entryTime)
-    const exitTime = new Date()
-    const hours = Math.ceil((exitTime - entryTime) / (1000 * 60 * 60))
-    let fee = hours <= 1 ? 5 : 5 + (hours - 1) * 5
-    fee = Math.min(fee, 50)
-    vehicle.exitTime = exitTime.toLocaleString()
-    vehicle.duration = hours + '小时'
-    calculationResult.value = { plate: vehicle.plate, duration: hours + '小时', totalFee: '¥' + fee }
+  try {
+    // 调用后端费控服务计算费用
+    const res = await feeApi.calculate(vehicle.plateNumber || vehicle.plate)
+    const fee = res.data
+    vehicle.exitTime = fee.exitTime || new Date().toLocaleString()
+    vehicle.duration = fee.parkingHours ? fee.parkingHours + '小时' : ''
+    calculationResult.value = {
+      id: fee.id,
+      plate: fee.plateNumber,
+      duration: fee.parkingHours ? fee.parkingHours + '小时' : '未知',
+      hourlyRate: fee.hourlyRate,
+      totalFee: '¥' + (fee.totalAmount ? fee.totalAmount.toFixed(2) : '0.00')
+    }
+  } catch (e) {
+    ElMessage.error('费用计算失败：' + e.message)
+  } finally {
     calculating.value = false
-  }, 1000)
+  }
 }
 
-function handlePaymentComplete() {
+async function handlePaymentComplete() {
   if (!calculationResult.value) return
-  const vehicle = exitedVehicles.value.find(v => v.plate === calculationResult.value.plate)
-  if (vehicle) {
+  try {
+    await feeApi.pay(calculationResult.value.id)
+    ElMessage.success('支付成功')
     showPayment.value = false
-    setTimeout(() => alert('支付成功！'), 200)
-    exitedVehicles.value = exitedVehicles.value.filter(v => v.plate !== calculationResult.value.plate)
-    const newRecord = { id: Date.now(), plate: calculationResult.value.plate, fee: calculationResult.value.totalFee, paymentTime: new Date().toLocaleTimeString() }
-    todayRecords.value.unshift(newRecord)
-    todayStats.value.vehicleCount = (parseInt(todayStats.value.vehicleCount) + 1).toString()
-    const feeAmount = parseInt(calculationResult.value.totalFee.replace('¥', ''))
-    todayStats.value.total = (parseInt(todayStats.value.total.replace(/,/g, '')) + feeAmount).toLocaleString()
+    // 从待结算列表中移除已支付车辆
+    exitedVehicles.value = exitedVehicles.value.filter(v => (v.plateNumber || v.plate) !== calculationResult.value.plate)
+    // 更新今日记录
+    todayRecords.value.unshift({
+      id: Date.now(),
+      plate: calculationResult.value.plate,
+      fee: calculationResult.value.totalFee,
+      paymentTime: new Date().toLocaleTimeString()
+    })
+    // 重新统计
+    await loadStatistics()
     selectedVehicle.value = null
     calculationResult.value = null
+  } catch (e) {
+    ElMessage.error('支付失败：' + e.message)
   }
 }
 
 function handlePrint() {
-  if (!calculationResult.value) { alert('没有可打印的费用信息'); return }
-  alert('打印指令已发送（模拟）')
+  if (!calculationResult.value) { ElMessage.warning('没有可打印的费用信息'); return }
+  ElMessage.success('打印指令已发送')
 }
 
 function handleClear() { calculationResult.value = null }
 
 function handleExport() {
-  window.open('http://localhost:8080/api/fees/export', '_blank')
+  feeApi.exportExcel()
 }
 </script>

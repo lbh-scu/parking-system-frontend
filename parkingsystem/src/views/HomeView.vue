@@ -181,9 +181,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import { Van, CircleCheck, Remove, Money, Opportunity, List, DataBoard, Clock } from '@element-plus/icons-vue'
+import { vehicleApi, feeApi, residentApi } from '../api/index.js'
 
 const gaugeRef = ref(null)
 let gaugeChart = null
@@ -195,11 +197,74 @@ function updateTime() {
   currentTime.value = now.toLocaleString('zh-CN', { hour12: false })
 }
 
+// ===== 从后端加载真实数据 =====
+const stats = ref({
+  totalSpots: 210, freeSpots: 123, occupiedSpots: 85,
+  todayIncome: 0, todayCars: 0, inCars: 0, outCars: 0, residents: 0
+})
+
+const recentVehicles = ref([])
+
+async function loadDashboardData() {
+  try {
+    // 并行请求：当前停车车辆、收费标准统计、住户数量
+    const [parkingRes, feeStatRes, residentRes] = await Promise.allSettled([
+      vehicleApi.parking(),
+      feeApi.statistics(),
+      residentApi.list()
+    ])
+
+    // 当前停车车辆 -> 计算占用数、最近入场
+    if (parkingRes.status === 'fulfilled' && parkingRes.value?.data) {
+      const vehicles = parkingRes.value.data
+      stats.value.occupiedSpots = vehicles.length
+      stats.value.freeSpots = stats.value.totalSpots - vehicles.length
+      stats.value.todayCars = vehicles.length
+      stats.value.inCars = vehicles.length
+      // 最近入场车辆（取最近5条）
+      recentVehicles.value = vehicles.slice(-5).map(v => ({
+        plate: v.plateNumber,
+        entryTime: v.entryTime,
+        isResident: v.isResident || false
+      })).reverse()
+    }
+
+    // 收费标准统计（今日总收入）
+    if (feeStatRes.status === 'fulfilled' && feeStatRes.value?.data != null) {
+      const totalRevenue = parseFloat(feeStatRes.value.data) || 0
+      stats.value.todayIncome = totalRevenue.toFixed(2)
+    }
+
+    // 住户列表 -> 住户数量
+    if (residentRes.status === 'fulfilled' && residentRes.value?.data) {
+      stats.value.residents = residentRes.value.data.length
+    }
+
+    // 渲染仪表盘
+    await nextTick()
+    renderGauge()
+  } catch (e) {
+    // 某些后端接口可能尚未实现，使用默认mock数据
+    console.warn('Dashboard loads with partial data:', e.message)
+  }
+}
+
+const occupancyRate = computed(() =>
+  ((stats.value.occupiedSpots / stats.value.totalSpots) * 100).toFixed(0)
+)
+
+const quickActions = [
+  { label: '车辆入场', path: '/vehicle', icon: 'Van', type: 'primary' },
+  { label: '住户管理', path: '/resident', icon: 'User', type: 'success' },
+  { label: '费用结算', path: '/fee', icon: 'Money', type: 'warning' },
+  { label: '车位监控', path: '/parking-spots', icon: 'Grid', type: 'info' }
+]
+
 onMounted(() => {
   updateTime()
   setInterval(updateTime, 1000)
   gaugeChart = echarts.init(gaugeRef.value)
-  renderGauge()
+  loadDashboardData()
   window.addEventListener('resize', handleResize)
 })
 
@@ -228,30 +293,6 @@ function renderGauge() {
     }]
   })
 }
-
-const occupancyRate = computed(() =>
-  ((stats.value.occupiedSpots / stats.value.totalSpots) * 100).toFixed(0)
-)
-
-const stats = ref({
-  totalSpots: 210, freeSpots: 123, occupiedSpots: 85,
-  todayIncome: 3240, todayCars: 46, inCars: 28, outCars: 18, residents: 85
-})
-
-const quickActions = [
-  { label: '车辆入场', path: '/vehicle', icon: 'Van', type: 'primary' },
-  { label: '住户管理', path: '/resident', icon: 'User', type: 'success' },
-  { label: '费用结算', path: '/fee', icon: 'Money', type: 'warning' },
-  { label: '车位监控', path: '/parking-spots', icon: 'Grid', type: 'info' }
-]
-
-const recentVehicles = ref([
-  { plate: '京A12345', entryTime: '2026-07-15 14:30:25', isResident: true },
-  { plate: '京B67890', entryTime: '2026-07-15 14:25:18', isResident: false },
-  { plate: '京C24680', entryTime: '2026-07-15 14:15:42', isResident: true },
-  { plate: '京D13579', entryTime: '2026-07-15 13:20:33', isResident: false },
-  { plate: '京E97531', entryTime: '2026-07-15 13:10:15', isResident: true }
-])
 </script>
 
 <style scoped>
