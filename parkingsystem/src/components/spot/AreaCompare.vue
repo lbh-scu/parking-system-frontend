@@ -14,9 +14,9 @@ const chartRef = ref(null)
 let chart = null
 
 const defaultData = [
-  { area: 'A区', total: 100, occupied: 57, free: 43 },
-  { area: 'B区', total: 50, occupied: 24, free: 26 },
-  { area: 'C区', total: 50, occupied: 36, free: 14 }
+  { area: 'A区', total: 70, occupied: 30, free: 40 },
+  { area: 'B区', total: 70, occupied: 25, free: 45 },
+  { area: 'C区', total: 70, occupied: 30, free: 40 }
 ]
 
 const displayData = computed(() => props.data.length ? props.data : defaultData)

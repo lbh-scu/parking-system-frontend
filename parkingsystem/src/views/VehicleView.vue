@@ -20,12 +20,6 @@
                 :immediate-validate="false"
               />
             </el-form-item>
-            <el-form-item label="身份">
-              <el-radio-group v-model="entryForm.isResident">
-                <el-radio :value="true">住户</el-radio>
-                <el-radio :value="false">外来</el-radio>
-              </el-radio-group>
-            </el-form-item>
             <el-form-item label="车位号">
               <el-input v-model="entryForm.spotNumber" placeholder="如 A001（留空自动分配）" />
             </el-form-item>
@@ -58,7 +52,6 @@ const plateInputRef = ref(null)
 
 const entryForm = ref({
   plate: '',
-  isResident: false,
   spotNumber: ''
 })
 
@@ -83,7 +76,7 @@ async function handleEntry() {
 }
 
 function resetForm() {
-  entryForm.value = { plate: '', isResident: false, spotNumber: '' }
+  entryForm.value = { plate: '', spotNumber: '' }
   plateInputRef.value?.reset()
 }
 

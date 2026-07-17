@@ -22,12 +22,9 @@ let chart = null
 const colorSteps = ['#f0f9eb','#d9f0d3','#a8ddb5','#43a2ca','#2b6b9e','#1a3b5c']
 
 const defaultData = [
-  { area: 'A区', floor: 'B1', total: 40, occupied: 30, rate: 0.75 },
-  { area: 'A区', floor: 'B2', total: 60, occupied: 27, rate: 0.45 },
-  { area: 'B区', floor: 'B1', total: 30, occupied: 18, rate: 0.60 },
-  { area: 'B区', floor: 'B2', total: 20, occupied: 6, rate: 0.30 },
-  { area: 'C区', floor: 'B1', total: 30, occupied: 25, rate: 0.83 },
-  { area: 'C区', floor: 'B2', total: 20, occupied: 11, rate: 0.55 }
+  { area: 'A区', floor: '地面', total: 70, occupied: 30, rate: 0.43 },
+  { area: 'B区', floor: '地面', total: 70, occupied: 25, rate: 0.36 },
+  { area: 'C区', floor: '地面', total: 70, occupied: 30, rate: 0.43 }
 ]
 
 const displayData = computed(() => props.data.length ? props.data : defaultData)

@@ -92,18 +92,15 @@ const statusMap = { free: '空闲', occupied: '已占', maintenance: '维护' }
 const stats = ref({ total: 210, free: 123, occupied: 85, maintenance: 2 })
 
 const heatData = ref([
-  { area: 'A区', floor: 'B1', total: 40, occupied: 30, rate: 0.75 },
-  { area: 'A区', floor: 'B2', total: 60, occupied: 27, rate: 0.45 },
-  { area: 'B区', floor: 'B1', total: 30, occupied: 18, rate: 0.60 },
-  { area: 'B区', floor: 'B2', total: 20, occupied: 6, rate: 0.30 },
-  { area: 'C区', floor: 'B1', total: 30, occupied: 25, rate: 0.83 },
-  { area: 'C区', floor: 'B2', total: 20, occupied: 11, rate: 0.55 }
+  { area: 'A区', floor: '地面', total: 70, occupied: 30, rate: 0.43 },
+  { area: 'B区', floor: '地面', total: 70, occupied: 25, rate: 0.36 },
+  { area: 'C区', floor: '地面', total: 70, occupied: 30, rate: 0.43 }
 ])
 
 const areaData = ref([
-  { area: 'A区', total: 100, occupied: 57, free: 43 },
-  { area: 'B区', total: 50, occupied: 24, free: 26 },
-  { area: 'C区', total: 50, occupied: 36, free: 14 }
+  { area: 'A区', total: 70, occupied: 30, free: 40 },
+  { area: 'B区', total: 70, occupied: 25, free: 45 },
+  { area: 'C区', total: 70, occupied: 30, free: 40 }
 ])
 
 function makeSpots(zone, prefix, count, occupiedEnd) {
