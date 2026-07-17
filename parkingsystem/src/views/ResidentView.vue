@@ -85,13 +85,18 @@ onMounted(loadResidents)
 async function handleAdd() {
   if (!form.name || !form.plate) return
   try {
-    await residentApi.add(form.name, form.plate.toUpperCase())
+    const res = await residentApi.add(form.name, form.plate.toUpperCase())
+    // 手动判断业务码
+    if (res.code !== 200) {
+      ElMessage.error(res.message)
+      return
+    }
     ElMessage.success('住户添加成功')
     form.name = ''
     form.plate = ''
     await loadResidents()
   } catch (e) {
-    ElMessage.error('添加住户失败：' + e.message)
+    ElMessage.error('网络请求失败')
   }
 }
 
