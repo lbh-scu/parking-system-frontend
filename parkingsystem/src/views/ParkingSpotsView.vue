@@ -137,7 +137,7 @@ function buildMockHeatmap(spots) {
   })
   return Object.values(map).map(d => ({
     area: d.area + '区',
-    floor: d.floor === 1 ? '一楼' : '二楼',
+    floor: d.floor === 1 ? 'B1' : 'B2',
     total: d.total,
     occupied: d.occupied,
     rate: d.total ? d.occupied / d.total : 0
@@ -208,8 +208,8 @@ onMounted(async () => {
 
     // 2) 处理热力图数据
     heatData.value = (heatRes.data || []).map(d => ({
-      area: d.area + '区',
-      floor: d.floor === 1 ? '一楼' : d.floor === 2 ? '二楼' : `第${d.floor}层`,
+      area: d.area,
+      floor: d.floor === 1 ? 'B1' : d.floor === 2 ? 'B2' : 'B1',
       total: d.total,
       occupied: d.occupied,
       rate: d.rate
@@ -217,7 +217,7 @@ onMounted(async () => {
 
     // 3) 处理区域对比数据
     areaData.value = (areaRes.data || []).map(d => ({
-      area: d.area + '区',
+      area: d.area,
       total: d.total,
       occupied: d.occupied,
       free: d.free
