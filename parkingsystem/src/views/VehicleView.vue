@@ -64,10 +64,14 @@ async function handleEntry() {
   try {
     const spot = entryForm.value.spotNumber || ''
     const res = await vehicleApi.entry(entryForm.value.plate, spot)
-    ElMessage.success(`车辆 ${res.data.plateNumber} 已入场，车位 ${res.data.spotNumber}`)
-    resetForm()
-    activeTab.value = 'parking'
-    queryKey.value++
+    if (res && res.data) {
+      ElMessage.success(`车辆 ${res.data.plateNumber} 已入场，车位 ${res.data.spotNumber}`)
+      resetForm()
+      activeTab.value = 'parking'
+      queryKey.value++
+    } else {
+      ElMessage.error(res?.message || '入场失败')
+    }
   } catch (e) {
     ElMessage.error(e.message || '入场失败')
   } finally {
