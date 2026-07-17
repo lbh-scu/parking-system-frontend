@@ -37,12 +37,12 @@ export const residentApi = {
     return api.get('/residents')
   },
   add(userName, plateNumber) {
-    // POST /resident/add 用 JSON body，新建 axios 实例单独设置
+    // POST /residents/resident/add 用 JSON body
     return axios.create({
       baseURL: 'http://localhost:8080/api',
       timeout: 10000,
       headers: { 'Content-Type': 'application/json' }
-    }).post('/residents/add', { userName, plateNumber }).then(res => res.data)
+    }).post('/residents/resident/add', { userName, plateNumber }).then(res => res.data)
   },
   exportExcel() {
     window.open('http://localhost:8080/api/residents/export', '_blank')

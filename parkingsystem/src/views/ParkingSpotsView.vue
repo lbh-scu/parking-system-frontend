@@ -73,6 +73,7 @@
             @click="handleSpotClick(spot)">
             <div class="spot-number">{{ spot.label }}</div>
             <div class="spot-status">{{ statusMap[spot.status] }}</div>
+            <div v-if="spot.status === 'occupied' && spot.currentPlate" class="spot-plate">{{ spot.currentPlate }}</div>
           </div>
         </div>
       </div>
@@ -81,7 +82,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Grid, DataAnalysis } from '@element-plus/icons-vue'
 import { parkingSpotApi } from '../api/index.js'
@@ -97,7 +98,6 @@ const areaData = ref([])
 const zones = ref([])
 
 // ===== 备用 mock 数据（后端离线或空数据时使用） =====
-// 真实数据库：A/B/C 三个区，每区 70 个车位，共 210 个；当前只有 1 辆车
 function buildMockSpots() {
   const areas = ['A', 'B', 'C']
   const spots = []
@@ -109,12 +109,13 @@ function buildMockSpots() {
         area: area,
         floor: n <= 35 ? 1 : 2,
         spotNumber: `${area}${String(n).padStart(2, '0')}`,
-        status: 'FREE'
+        status: 'FREE',
+        currentPlate: null
       })
     }
   }
-  // 只有 1 辆车：假设停在 A01
   spots[0].status = 'OCCUPIED'
+  spots[0].currentPlate = '京A12345'
   return spots
 }
 
@@ -156,7 +157,7 @@ function buildMockZones(spots) {
   spots.forEach(s => {
     const a = s.area
     if (!map[a]) { map[a] = { name: a, desc: '', color: areaColors[a] || '#909399', spots: [] } }
-    map[a].spots.push({ id: s.id, label: s.spotNumber, status: s.status.toLowerCase() })
+    map[a].spots.push({ id: s.id, label: s.spotNumber, status: s.status.toLowerCase(), currentPlate: s.currentPlate || null })
   })
   Object.keys(map).forEach(k => {
     const sp = map[k].spots
@@ -165,9 +166,10 @@ function buildMockZones(spots) {
   return Object.values(map)
 }
 
-onMounted(async () => {
+const pollingTimer = ref(null)
+
+async function fetchData() {
   try {
-    // 并行请求所有接口
     const [spotRes, heatRes, areaRes, occRes] = await Promise.all([
       parkingSpotApi.list(),
       parkingSpotApi.heatmap(),
@@ -177,7 +179,6 @@ onMounted(async () => {
 
     const allSpots = spotRes.data || []
 
-    // 如果后端返回空数据，使用 Mock 数据
     if (!allSpots.length) {
       const mockSpots = buildMockSpots()
       stats.value = buildMockStats(mockSpots)
@@ -187,7 +188,6 @@ onMounted(async () => {
       return
     }
 
-    // 1) 处理占用率统计
     const occ = occRes.data
     stats.value = {
       total: occ.total || 0,
@@ -196,7 +196,6 @@ onMounted(async () => {
       maintenance: occ.maintenance || 0
     }
 
-    // 2) 处理热力图数据
     heatData.value = (heatRes.data || []).map(d => ({
       area: d.area + '区',
       floor: d.floor === 1 ? '一楼' : d.floor === 2 ? '二楼' : `第${d.floor}层`,
@@ -205,7 +204,6 @@ onMounted(async () => {
       rate: d.rate
     }))
 
-    // 3) 处理区域对比数据
     areaData.value = (areaRes.data || []).map(d => ({
       area: d.area + '区',
       total: d.total,
@@ -213,7 +211,6 @@ onMounted(async () => {
       free: d.free
     }))
 
-    // 4) 处理车位列表 → 按区域分组
     const areaMap = {}
     const areaColors = { A: '#409EFF', B: '#67C23A', C: '#E6A23C', D: '#F56C6C' }
     allSpots.forEach(spot => {
@@ -223,7 +220,8 @@ onMounted(async () => {
       areaMap[area].spots.push({
         id: spot.id,
         label: spot.spotNumber,
-        status: raw
+        status: raw,
+        currentPlate: spot.currentPlate || null
       })
     })
     Object.keys(areaMap).forEach(key => {
@@ -239,6 +237,18 @@ onMounted(async () => {
     heatData.value = buildMockHeatmap(mockSpots)
     areaData.value = buildMockAreaCompare(mockSpots)
     zones.value = buildMockZones(mockSpots)
+  }
+}
+
+onMounted(() => {
+  fetchData()
+  pollingTimer.value = setInterval(fetchData, 5000)
+})
+
+onUnmounted(() => {
+  if (pollingTimer.value) {
+    clearInterval(pollingTimer.value)
+    pollingTimer.value = null
   }
 })
 
@@ -271,4 +281,5 @@ const handleSpotClick = (spot) => {
 .spot-maintenance { background: #fdf6ec; border: 1px solid #f5dab1; }
 .spot-number { font-size: 12px; font-weight: bold; color: #303133; }
 .spot-status { font-size: 10px; color: #909399; margin-top: 2px; }
+.spot-plate { font-size: 9px; color: #F56C6C; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>
