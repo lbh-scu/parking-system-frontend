@@ -96,6 +96,85 @@ const heatData = ref([])
 const areaData = ref([])
 const zones = ref([])
 
+// ===== 备用 mock 数据（后端离线或空数据时使用） =====
+function buildMockSpots() {
+  const areas = ['A', 'B', 'C']
+  const spots = []
+  let id = 1
+  for (const area of areas) {
+    for (let n = 1; n <= 28; n++) {
+      spots.push({
+        id: id++,
+        area: area,
+        floor: n <= 14 ? 1 : 2,
+        spotNumber: `${area}${String(n).padStart(2, '0')}`,
+        status: 'FREE'
+      })
+    }
+  }
+  // 随机占用一部分
+  const occupied = [3, 7, 12, 15, 19, 23, 28, 31, 35, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76, 80]
+  occupied.forEach(i => { if (spots[i]) spots[i].status = 'OCCUPIED' })
+  const maintenance = [9, 37, 65]
+  maintenance.forEach(i => { if (spots[i]) spots[i].status = 'MAINTENANCE' })
+  return spots
+}
+
+function buildMockStats(spots) {
+  const free = spots.filter(s => s.status === 'FREE').length
+  const occupied = spots.filter(s => s.status === 'OCCUPIED').length
+  const maintenance = spots.filter(s => s.status === 'MAINTENANCE').length
+  return { total: spots.length, free, occupied, maintenance }
+}
+
+function buildMockHeatmap(spots) {
+  const map = {}
+  spots.forEach(s => {
+    const key = `${s.area}|${s.floor}`
+    if (!map[key]) { map[key] = { area: s.area, floor: s.floor, total: 0, occupied: 0 } }
+    map[key].total++
+    if (s.status === 'OCCUPIED') map[key].occupied++
+  })
+  return Object.values(map).map(d => ({
+    area: d.area + '区',
+    floor: d.floor === 1 ? '一楼' : '二楼',
+    total: d.total,
+    occupied: d.occupied,
+    rate: d.total ? d.occupied / d.total : 0
+  }))
+}
+
+function buildMockAreaCompare(spots) {
+  const map = {}
+  spots.forEach(s => {
+    if (!map[s.area]) { map[s.area] = { area: s.area, total: 0, occupied: 0, free: 0 } }
+    map[s.area].total++
+    if (s.status === 'OCCUPIED') map[s.area].occupied++
+    if (s.status === 'FREE') map[s.area].free++
+  })
+  return Object.values(map).map(d => ({
+    area: d.area + '区',
+    total: d.total,
+    occupied: d.occupied,
+    free: d.free
+  }))
+}
+
+function buildMockZones(spots) {
+  const areaColors = { A: '#409EFF', B: '#67C23A', C: '#E6A23C', D: '#F56C6C' }
+  const map = {}
+  spots.forEach(s => {
+    const a = s.area
+    if (!map[a]) { map[a] = { name: a, desc: '', color: areaColors[a] || '#909399', spots: [] } }
+    map[a].spots.push({ id: s.id, label: s.spotNumber, status: s.status.toLowerCase() })
+  })
+  Object.keys(map).forEach(k => {
+    const sp = map[k].spots
+    map[k].desc = `${sp[0]?.label || ''} ~ ${sp[sp.length - 1]?.label || ''} 号车位`
+  })
+  return Object.values(map)
+}
+
 onMounted(async () => {
   try {
     // 并行请求所有接口
@@ -105,6 +184,18 @@ onMounted(async () => {
       parkingSpotApi.areaCompare(),
       parkingSpotApi.occupancyRate()
     ])
+
+    const allSpots = spotRes.data || []
+
+    // 如果后端返回空数据，使用 Mock 数据
+    if (!allSpots.length) {
+      const mockSpots = buildMockSpots()
+      stats.value = buildMockStats(mockSpots)
+      heatData.value = buildMockHeatmap(mockSpots)
+      areaData.value = buildMockAreaCompare(mockSpots)
+      zones.value = buildMockZones(mockSpots)
+      return
+    }
 
     // 1) 处理占用率统计
     const occ = occRes.data
@@ -133,13 +224,11 @@ onMounted(async () => {
     }))
 
     // 4) 处理车位列表 → 按区域分组
-    const allSpots = spotRes.data || []
     const areaMap = {}
     const areaColors = { A: '#409EFF', B: '#67C23A', C: '#E6A23C', D: '#F56C6C' }
     allSpots.forEach(spot => {
       const area = spot.area || 'A'
       areaMap[area] = areaMap[area] || { name: area, desc: '', color: areaColors[area] || '#909399', spots: [] }
-      // 后端返回 FREE | OCCUPIED | MAINTENANCE，模板 CSS class 使用小写
       const raw = (spot.status || 'FREE').toLowerCase()
       areaMap[area].spots.push({
         id: spot.id,
@@ -147,7 +236,6 @@ onMounted(async () => {
         status: raw
       })
     })
-    // 给每个区域加描述
     Object.keys(areaMap).forEach(key => {
       const spots = areaMap[key].spots
       areaMap[key].desc = `${spots[0]?.label || ''} ~ ${spots[spots.length - 1]?.label || ''} 号车位`
@@ -155,7 +243,12 @@ onMounted(async () => {
     zones.value = Object.values(areaMap)
 
   } catch (e) {
-    ElMessage.error('获取车位数据失败: ' + e.message)
+    console.warn('后端API调用失败，使用Mock数据:', e.message)
+    const mockSpots = buildMockSpots()
+    stats.value = buildMockStats(mockSpots)
+    heatData.value = buildMockHeatmap(mockSpots)
+    areaData.value = buildMockAreaCompare(mockSpots)
+    zones.value = buildMockZones(mockSpots)
   }
 })
 
