@@ -81,45 +81,84 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Grid, DataAnalysis } from '@element-plus/icons-vue'
+import { parkingSpotApi } from '../api/index.js'
 import HeatMap from '../components/spot/HeatMap.vue'
 import AreaCompare from '../components/spot/AreaCompare.vue'
 
-const statusMap = { free: '空闲', occupied: '已占', maintenance: '维护' }
+const statusMap = { FREE: '空闲', OCCUPIED: '已占', MAINTENANCE: '维护' }
+const labelMap = { FREE: '空闲', OCCUPIED: '已占用', MAINTENANCE: '维护中' }
 
-const stats = ref({ total: 210, free: 123, occupied: 85, maintenance: 2 })
+const stats = ref({ total: 0, free: 0, occupied: 0, maintenance: 0 })
+const heatData = ref([])
+const areaData = ref([])
+const zones = ref([])
 
-const heatData = ref([
-  { area: 'A区', floor: '地面', total: 70, occupied: 30, rate: 0.43 },
-  { area: 'B区', floor: '地面', total: 70, occupied: 25, rate: 0.36 },
-  { area: 'C区', floor: '地面', total: 70, occupied: 30, rate: 0.43 }
-])
+onMounted(async () => {
+  try {
+    // 并行请求所有接口
+    const [spotRes, heatRes, areaRes, occRes] = await Promise.all([
+      parkingSpotApi.list(),
+      parkingSpotApi.heatmap(),
+      parkingSpotApi.areaCompare(),
+      parkingSpotApi.occupancyRate()
+    ])
 
-const areaData = ref([
-  { area: 'A区', total: 70, occupied: 30, free: 40 },
-  { area: 'B区', total: 70, occupied: 25, free: 45 },
-  { area: 'C区', total: 70, occupied: 30, free: 40 }
-])
+    // 1) 处理占用率统计
+    const occ = occRes.data
+    stats.value = {
+      total: occ.total || 0,
+      free: occ.free || 0,
+      occupied: occ.occupied || 0,
+      maintenance: occ.maintenance || 0
+    }
 
-function makeSpots(zone, prefix, count, occupiedEnd) {
-  return Array.from({ length: count }, (_, i) => ({
-    id: `${zone}-${i + 1}`,
-    label: `${prefix}${String(i + 1).padStart(2, '0')}`,
-    status: i < occupiedEnd ? 'occupied' : i === count - 2 ? 'maintenance' : 'free'
-  }))
-}
+    // 2) 处理热力图数据
+    heatData.value = (heatRes.data || []).map(d => ({
+      area: d.area + '区',
+      floor: d.floor === 1 ? '一楼' : d.floor === 2 ? '二楼' : `第${d.floor}层`,
+      total: d.total,
+      occupied: d.occupied,
+      rate: d.rate
+    }))
 
-const zones = ref([
-  { name: 'A', desc: '1-70 号车位', color: '#409EFF', spots: makeSpots('A', 'A', 70, 30) },
-  { name: 'B', desc: '71-140 号车位', color: '#67C23A', spots: makeSpots('B', 'B', 70, 25) },
-  { name: 'C', desc: '141-210 号车位', color: '#E6A23C', spots: makeSpots('C', 'C', 70, 30) }
-])
+    // 3) 处理区域对比数据
+    areaData.value = (areaRes.data || []).map(d => ({
+      area: d.area + '区',
+      total: d.total,
+      occupied: d.occupied,
+      free: d.free
+    }))
+
+    // 4) 处理车位列表 → 按区域分组
+    const allSpots = spotRes.data || []
+    const areaMap = {}
+    const areaColors = { A: '#409EFF', B: '#67C23A', C: '#E6A23C', D: '#F56C6C' }
+    allSpots.forEach(spot => {
+      const area = spot.area || 'A'
+      areaMap[area] = areaMap[area] || { name: area, desc: '', color: areaColors[area] || '#909399', spots: [] }
+      areaMap[area].spots.push({
+        id: spot.id,
+        label: spot.spotNumber,
+        status: (spot.status || 'FREE').toUpperCase()
+      })
+    })
+    // 给每个区域加描述
+    Object.keys(areaMap).forEach(key => {
+      const spots = areaMap[key].spots
+      areaMap[key].desc = `${spots[0]?.label || ''} ~ ${spots[spots.length - 1]?.label || ''} 号车位`
+    })
+    zones.value = Object.values(areaMap)
+
+  } catch (e) {
+    ElMessage.error('获取车位数据失败: ' + e.message)
+  }
+})
 
 const handleSpotClick = (spot) => {
-  const msg = spot.status === 'free' ? '空闲中' : spot.status === 'occupied' ? '已占用' : '维护中'
-  ElMessage.info(`${spot.label} 号车位 ${msg}`)
+  ElMessage.info(`${spot.label} 号车位 ${labelMap[spot.status] || spot.status}`)
 }
 </script>
 

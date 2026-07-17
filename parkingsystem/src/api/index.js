@@ -68,11 +68,15 @@ export const feeApi = {
   }
 }
 
-// ===== 车位管理（待成员C完成后端后对接） =====
+// ===== 车位管理 =====
 export const parkingSpotApi = {
-  // list() { return api.get('/parking-spots') },
-  // heatMap() { return api.get('/parking-spots/heatmap') },
-  // occupancyRate() { return api.get('/parking-spots/occupancy') },
+  list() { return api.get('/spots') },
+  free() { return api.get('/spots/free') },
+  assign(plateNumber) { return api.post('/spots/assign', null, { params: { plateNumber } }) },
+  release(spotNumber) { return api.post('/spots/release', null, { params: { spotNumber } }) },
+  heatmap() { return api.get('/spots/heatmap') },
+  areaCompare() { return api.get('/spots/area-compare') },
+  occupancyRate() { return api.get('/spots/occupancy-rate') },
 }
 
 // ===== 数据统计（待成员C完成后端后对接） =====
