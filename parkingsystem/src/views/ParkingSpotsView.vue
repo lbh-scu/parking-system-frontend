@@ -131,13 +131,37 @@ function buildMockHeatmap(spots) {
   const map = {}
   spots.forEach(s => {
     const key = `${s.area}|${s.floor}`
-    if (!map[key]) { map[key] = { area: s.area, floor: s.floor, total: 0, occupied: 0 } }
+    if (!map[key]) { map[key] = { area: s.area + '区', floor: s.floor === 1 ? 'B1' : 'B2', total: 0, occupied: 0 } }
     map[key].total++
     if (s.status === 'OCCUPIED') map[key].occupied++
   })
   return Object.values(map).map(d => ({
-    area: d.area + '区',
-    floor: d.floor === 1 ? '一楼' : '二楼',
+    ...d,
+    rate: d.total ? d.occupied / d.total : 0
+  }))
+}
+
+function buildMockAreaCompare(spots) {
+  const map = {}
+  spots.forEach(s => {
+    if (!map[s.area]) { map[s.area] = { area: s.area + '区', total: 0, occupied: 0, free: 0 } }
+    map[s.area].total++
+    if (s.status === 'OCCUPIED') map[s.area].occupied++
+    if (s.status === 'FREE') map[s.area].free++
+  })
+  return Object.values(map)
+}
+
+function buildMockZones(spots) {
+  const map = {}
+  spots.forEach(s => {
+    const key = `${s.area}|${s.floor}`
+    if (!map[key]) { map[key] = { area: s.area + '区', floor: s.floor === 1 ? 'B1' : 'B2', total: 0, occupied: 0 } }
+    map[key].total++
+    if (s.status === 'OCCUPIED') map[key].occupied++
+  })
+  return Object.values(map).map(d => ({
+
     total: d.total,
     occupied: d.occupied,
     rate: d.total ? d.occupied / d.total : 0
@@ -147,13 +171,13 @@ function buildMockHeatmap(spots) {
 function buildMockAreaCompare(spots) {
   const map = {}
   spots.forEach(s => {
-    if (!map[s.area]) { map[s.area] = { area: s.area, total: 0, occupied: 0, free: 0 } }
+    if (!map[s.area]) { map[s.area] = { area: s.area + '区', total: 0, occupied: 0, free: 0 } }
     map[s.area].total++
     if (s.status === 'OCCUPIED') map[s.area].occupied++
     if (s.status === 'FREE') map[s.area].free++
   })
   return Object.values(map).map(d => ({
-    area: d.area + '区',
+
     total: d.total,
     occupied: d.occupied,
     free: d.free
@@ -208,8 +232,8 @@ onMounted(async () => {
 
     // 2) 处理热力图数据
     heatData.value = (heatRes.data || []).map(d => ({
-      area: d.area + '区',
-      floor: d.floor === 1 ? '一楼' : d.floor === 2 ? '二楼' : `第${d.floor}层`,
+      area: d.area || '',
+      floor: d.floor === 1 ? 'B1' : d.floor === 2 ? 'B2' : `B${d.floor}`,
       total: d.total,
       occupied: d.occupied,
       rate: d.rate
@@ -217,7 +241,7 @@ onMounted(async () => {
 
     // 3) 处理区域对比数据
     areaData.value = (areaRes.data || []).map(d => ({
-      area: d.area + '区',
+      area: d.area || '',
       total: d.total,
       occupied: d.occupied,
       free: d.free
