@@ -185,7 +185,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import { Van, CircleCheck, Remove, Money, Opportunity, List, DataBoard, Clock } from '@element-plus/icons-vue'
-import { vehicleApi, feeApi, residentApi } from '../api/index.js'
+import { vehicleApi, feeApi, residentApi, parkingSpotApi } from '../api/index.js'
 
 const gaugeRef = ref(null)
 let gaugeChart = null
@@ -207,12 +207,20 @@ const recentVehicles = ref([])
 
 async function loadDashboardData() {
   try {
-    // 并行请求：当前停车车辆、收费标准统计、住户数量
-    const [parkingRes, feeStatRes, residentRes] = await Promise.allSettled([
+    // 并行请求：车位占用率、当前停车车辆、收费标准统计、住户数量
+    const [occRes, parkingRes, feeStatRes, residentRes] = await Promise.allSettled([
+      parkingSpotApi.occupancyRate(),
       vehicleApi.parking(),
       feeApi.statistics(),
       residentApi.list()
     ])
+
+    // 车位占用率 -> 更新总数
+    if (occRes.status === 'fulfilled' && occRes.value?.data) {
+      stats.value.totalSpots = occRes.value.data.total || stats.value.totalSpots
+      stats.value.freeSpots = occRes.value.data.free || 0
+      stats.value.occupiedSpots = occRes.value.data.occupied || 0
+    }
 
     // 当前停车车辆 -> 计算占用数、最近入场
     if (parkingRes.status === 'fulfilled' && parkingRes.value?.data) {
