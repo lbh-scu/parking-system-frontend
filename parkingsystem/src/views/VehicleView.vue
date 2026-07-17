@@ -62,7 +62,7 @@ async function handleEntry() {
   }
   loading.value = true
   try {
-    const spot = entryForm.value.spotNumber || 'A001'
+    const spot = entryForm.value.spotNumber || ''
     const res = await vehicleApi.entry(entryForm.value.plate, spot)
     ElMessage.success(`车辆 ${res.data.plateNumber} 已入场，车位 ${res.data.spotNumber}`)
     resetForm()
