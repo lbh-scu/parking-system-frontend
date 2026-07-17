@@ -20,8 +20,8 @@
 
         <el-table :data="residents" style="width: 100%" stripe>
           <el-table-column prop="id" label="住户ID" width="120" align="center" />
-          <el-table-column prop="name" label="住户姓名" />
-          <el-table-column prop="plate" label="车牌号" />
+          <el-table-column prop="userName" label="住户姓名" />
+          <el-table-column prop="plateNumber" label="车牌号" />
         </el-table>
 
         <el-empty v-if="!residents.length" description="暂无住户数据，请在右侧添加" />
@@ -88,8 +88,8 @@ function handleAdd() {
   if (!form.name || !form.plate) return
   residents.value.push({
     id: 'R' + String(residents.value.length + 1).padStart(4, '0'),
-    name: form.name,
-    plate: form.plate.toUpperCase()
+    userName: form.name,
+    plateNumber: form.plate.toUpperCase()
   })
   form.name = ''
   form.plate = ''
