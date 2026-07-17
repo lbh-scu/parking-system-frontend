@@ -88,8 +88,8 @@ import { parkingSpotApi } from '../api/index.js'
 import HeatMap from '../components/spot/HeatMap.vue'
 import AreaCompare from '../components/spot/AreaCompare.vue'
 
-const statusMap = { FREE: '空闲', OCCUPIED: '已占', MAINTENANCE: '维护' }
-const labelMap = { FREE: '空闲', OCCUPIED: '已占用', MAINTENANCE: '维护中' }
+const statusMap = { free: '空闲', occupied: '已占', maintenance: '维护' }
+const labelMap = { free: '空闲', occupied: '已占用', maintenance: '维护中' }
 
 const stats = ref({ total: 0, free: 0, occupied: 0, maintenance: 0 })
 const heatData = ref([])
@@ -139,10 +139,12 @@ onMounted(async () => {
     allSpots.forEach(spot => {
       const area = spot.area || 'A'
       areaMap[area] = areaMap[area] || { name: area, desc: '', color: areaColors[area] || '#909399', spots: [] }
+      // 后端返回 FREE | OCCUPIED | MAINTENANCE，模板 CSS class 使用小写
+      const raw = (spot.status || 'FREE').toLowerCase()
       areaMap[area].spots.push({
         id: spot.id,
         label: spot.spotNumber,
-        status: (spot.status || 'FREE').toUpperCase()
+        status: raw
       })
     })
     // 给每个区域加描述
