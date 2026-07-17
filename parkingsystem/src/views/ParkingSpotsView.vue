@@ -97,26 +97,24 @@ const areaData = ref([])
 const zones = ref([])
 
 // ===== 备用 mock 数据（后端离线或空数据时使用） =====
+// 真实数据库：A/B/C 三个区，每区 70 个车位，共 210 个；当前只有 1 辆车
 function buildMockSpots() {
   const areas = ['A', 'B', 'C']
   const spots = []
   let id = 1
   for (const area of areas) {
-    for (let n = 1; n <= 28; n++) {
+    for (let n = 1; n <= 70; n++) {
       spots.push({
         id: id++,
         area: area,
-        floor: n <= 14 ? 1 : 2,
+        floor: n <= 35 ? 1 : 2,
         spotNumber: `${area}${String(n).padStart(2, '0')}`,
         status: 'FREE'
       })
     }
   }
-  // 随机占用一部分
-  const occupied = [3, 7, 12, 15, 19, 23, 28, 31, 35, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76, 80]
-  occupied.forEach(i => { if (spots[i]) spots[i].status = 'OCCUPIED' })
-  const maintenance = [9, 37, 65]
-  maintenance.forEach(i => { if (spots[i]) spots[i].status = 'MAINTENANCE' })
+  // 只有 1 辆车：假设停在 A01
+  spots[0].status = 'OCCUPIED'
   return spots
 }
 
@@ -131,15 +129,12 @@ function buildMockHeatmap(spots) {
   const map = {}
   spots.forEach(s => {
     const key = `${s.area}|${s.floor}`
-    if (!map[key]) { map[key] = { area: s.area, floor: s.floor, total: 0, occupied: 0 } }
+    if (!map[key]) { map[key] = { area: s.area + '区', floor: s.floor === 1 ? '一楼' : '二楼', total: 0, occupied: 0 } }
     map[key].total++
     if (s.status === 'OCCUPIED') map[key].occupied++
   })
   return Object.values(map).map(d => ({
-    area: d.area + '区',
-    floor: d.floor === 1 ? '一楼' : '二楼',
-    total: d.total,
-    occupied: d.occupied,
+    ...d,
     rate: d.total ? d.occupied / d.total : 0
   }))
 }
@@ -147,17 +142,12 @@ function buildMockHeatmap(spots) {
 function buildMockAreaCompare(spots) {
   const map = {}
   spots.forEach(s => {
-    if (!map[s.area]) { map[s.area] = { area: s.area, total: 0, occupied: 0, free: 0 } }
+    if (!map[s.area]) { map[s.area] = { area: s.area + '区', total: 0, occupied: 0, free: 0 } }
     map[s.area].total++
     if (s.status === 'OCCUPIED') map[s.area].occupied++
     if (s.status === 'FREE') map[s.area].free++
   })
-  return Object.values(map).map(d => ({
-    area: d.area + '区',
-    total: d.total,
-    occupied: d.occupied,
-    free: d.free
-  }))
+  return Object.values(map)
 }
 
 function buildMockZones(spots) {
