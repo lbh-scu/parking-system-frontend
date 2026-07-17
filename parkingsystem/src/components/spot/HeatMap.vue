@@ -22,9 +22,9 @@ let chart = null
 const colorSteps = ['#f0f9eb','#d9f0d3','#a8ddb5','#43a2ca','#2b6b9e','#1a3b5c']
 
 const defaultData = [
-  { area: 'A区', floor: '地面', total: 70, occupied: 30, rate: 0.43 },
-  { area: 'B区', floor: '地面', total: 70, occupied: 25, rate: 0.36 },
-  { area: 'C区', floor: '地面', total: 70, occupied: 30, rate: 0.43 }
+  { area: 'A区', total: 100, occupied: 30, rate: 0.30 },
+  { area: 'B区', total: 70, occupied: 25, rate: 0.36 },
+  { area: 'C区', total: 70, occupied: 30, rate: 0.43 }
 ]
 
 const displayData = computed(() => props.data.length ? props.data : defaultData)
@@ -48,24 +48,23 @@ function handleResize() { chart?.resize() }
 
 function render() {
   const areas = [...new Set(displayData.value.map(d => d.area))]
-  const floors = [...new Set(displayData.value.map(d => d.floor))]
   const heatData = displayData.value.map(d => [
-    areas.indexOf(d.area), floors.indexOf(d.floor), +(d.rate * 100).toFixed(0)
+    areas.indexOf(d.area), 0, +(d.rate * 100).toFixed(0)
   ])
   chart.setOption({
     tooltip: {
       formatter: p => {
         const d = displayData.value[p.dataIndex]
-        return `${d.area} ${d.floor}<br/>占用率: ${(d.rate * 100).toFixed(0)}%<br/>已占/总数: ${d.occupied}/${d.total}`
+        return `${d.area}<br/>占用率: ${(d.rate * 100).toFixed(0)}%<br/>已占/总数: ${d.occupied}/${d.total}`
       }
     },
-    grid: { left: 60, right: 20, top: 20, bottom: 40 },
-    xAxis: { type: 'category', data: areas, axisLabel: { fontSize: 13, fontWeight: 'bold' } },
-    yAxis: { type: 'category', data: floors, axisLabel: { fontSize: 13, fontWeight: 'bold' } },
+    grid: { left: 40, right: 20, top: 10, bottom: 40 },
+    xAxis: { type: 'category', data: areas, axisLabel: { fontSize: 14, fontWeight: 'bold' } },
+    yAxis: { type: 'category', data: ['占用率'], axisLabel: { fontSize: 12 } },
     series: [{
       type: 'heatmap',
       data: heatData,
-      label: { show: true, formatter: p => `${p.value[2]}%`, fontSize: 14, fontWeight: 'bold', color: '#303133' },
+      label: { show: true, formatter: p => `${p.value[2]}%`, fontSize: 16, fontWeight: 'bold', color: '#303133' },
       emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.3)' } },
       itemStyle: { borderRadius: 4 }
     }],
