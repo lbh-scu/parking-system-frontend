@@ -62,6 +62,9 @@ export const feeApi = {
   statistics() {
     return api.get('/fees/statistics')
   },
+  todayRecords() {
+    return api.get('/fees/today-records')
+  },
   exportExcel() {
     window.open('http://localhost:8080/api/fees/export', '_blank')
   }

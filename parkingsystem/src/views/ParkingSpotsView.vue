@@ -73,6 +73,7 @@
             @click="handleSpotClick(spot)">
             <div class="spot-number">{{ spot.label }}</div>
             <div class="spot-status">{{ statusMap[spot.status] }}</div>
+            <div v-if="spot.status === 'occupied' && plateMap[spot.label]" class="spot-plate">{{ plateMap[spot.label] }}</div>
           </div>
         </div>
       </div>
@@ -84,7 +85,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Grid, DataAnalysis } from '@element-plus/icons-vue'
-import { parkingSpotApi } from '../api/index.js'
+import { parkingSpotApi, vehicleApi } from '../api/index.js'
 import HeatMap from '../components/spot/HeatMap.vue'
 import AreaCompare from '../components/spot/AreaCompare.vue'
 
@@ -95,6 +96,7 @@ const stats = ref({ total: 0, free: 0, occupied: 0, maintenance: 0 })
 const heatData = ref([])
 const areaData = ref([])
 const zones = ref([])
+const plateMap = ref({}) // spotNumber -> plateNumber 映射
 
 // ===== 备用 mock 数据（后端离线或空数据时使用） =====
 function buildMockSpots() {
@@ -240,6 +242,21 @@ onMounted(async () => {
     })
     zones.value = Object.values(areaMap)
 
+    // 5) 加载正在停放的车辆，在占用车位上标注车牌号
+    try {
+      const parkingRes = await vehicleApi.parking()
+      const parkingVehicles = parkingRes.data || []
+      const map = {}
+      parkingVehicles.forEach(v => {
+        if (v.spotNumber) {
+          map[v.spotNumber] = v.plateNumber
+        }
+      })
+      plateMap.value = map
+    } catch (e) {
+      console.warn('获取停放车辆失败:', e.message)
+    }
+
   } catch (e) {
     console.warn('后端API调用失败，使用Mock数据:', e.message)
     const mockSpots = buildMockSpots()
@@ -279,4 +296,5 @@ const handleSpotClick = (spot) => {
 .spot-maintenance { background: #fdf6ec; border: 1px solid #f5dab1; }
 .spot-number { font-size: 12px; font-weight: bold; color: #303133; }
 .spot-status { font-size: 10px; color: #909399; margin-top: 2px; }
+.spot-plate { font-size: 9px; color: #F56C6C; font-weight: bold; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>

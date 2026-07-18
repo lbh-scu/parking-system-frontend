@@ -277,6 +277,7 @@ const calculating = ref(false)
 const calculationResult = ref(null)
 const showPayment = ref(false)
 const selectedPayment = ref('wechat')
+const currentFeeId = ref(null)
 
 const paymentMethods = [
   { key: 'wechat', label: '微信支付', icon: '💚', color: '#07C160', bg: '#f0faf0' },
@@ -287,31 +288,49 @@ const paymentMethods = [
 const currentMethodIcon = computed(() => paymentMethods.find(m => m.key === selectedPayment.value)?.icon || '💚')
 const currentMethodLabel = computed(() => paymentMethods.find(m => m.key === selectedPayment.value)?.label || '微信支付')
 
-const todayStats = ref({ total: '0', vehicleCount: '0' })
+const todayStats = ref({ total: '0.00', vehicleCount: '0' })
 const todayRecords = ref([])
 
 onMounted(() => {
   loadPendingFees()
   loadStatistics()
+  loadTodayRecords()
 })
 
-// 从后端加载待结算车辆（通过 /fees/pending 获取状态为 PAID 的车辆）
+// 从后端加载待结算车辆（通过 /fees/pending 获取状态为 PENDING 的费用记录）
 async function loadPendingFees() {
   try {
     const res = await feeApi.pending()
-    // 后端返回 List<Fee>，取最后几条展示
     const fees = res.data || []
-    // 筛选状态为 PENDING 的费用记录转为前端展示格式
     exitedVehicles.value = fees.map(f => ({
       id: f.id,
       plateNumber: f.plateNumber,
       plate: f.plateNumber,
       entryTime: f.entryTime,
       exitTime: f.exitTime || '',
-      duration: f.parkingHours ? f.parkingHours + '小时' : ''
+      duration: f.parkingHours ? f.parkingHours + '小时' : '',
+      parkingHours: f.parkingHours,
+      hourlyRate: f.hourlyRate,
+      totalAmount: f.totalAmount
     }))
   } catch (e) {
-    ElMessage.error('获取待结算车辆失败：' + e.message)
+    console.warn('获取待结算车辆失败：' + e.message)
+  }
+}
+
+// 加载今日收费记录
+async function loadTodayRecords() {
+  try {
+    const res = await feeApi.todayRecords()
+    const records = res.data || []
+    todayRecords.value = records.map(r => ({
+      id: r.id,
+      plate: r.plateNumber,
+      fee: '¥' + (r.totalAmount ? r.totalAmount.toFixed(2) : '0.00'),
+      paymentTime: r.paymentTime || ''
+    }))
+  } catch (e) {
+    console.warn('获取今日记录失败：' + e.message)
   }
 }
 
@@ -319,11 +338,13 @@ async function loadPendingFees() {
 async function loadStatistics() {
   try {
     const res = await feeApi.statistics()
-    const totalRevenue = res.data || 0
-    todayStats.value.total = totalRevenue.toFixed(2)
-    // 从 pending 列表获取已结算数量做参考
+    const data = res.data || {}
+    todayStats.value = {
+      total: (data.todayRevenue || 0).toFixed(2),
+      vehicleCount: String(data.paidCount || data.todayOrderCount || 0)
+    }
   } catch (e) {
-    // 静默处理
+    console.warn('获取统计失败：' + e.message)
   }
 }
 
