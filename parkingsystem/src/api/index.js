@@ -37,7 +37,6 @@ export const residentApi = {
     return api.get('/residents')
   },
   add(userName, plateNumber) {
-    // POST /residents/resident/add 用 JSON body
     return axios.create({
       baseURL: 'http://localhost:8080/api',
       timeout: 10000,
@@ -68,7 +67,7 @@ export const feeApi = {
   }
 }
 
-// ===== 车位管理 =====
+// ===== 车位管理（使用其他成员更新的 API 路径） =====
 export const parkingSpotApi = {
   list() { return api.get('/spots') },
   free() { return api.get('/spots/free') },
@@ -79,20 +78,55 @@ export const parkingSpotApi = {
   occupancyRate() { return api.get('/spots/occupancy-rate') },
 }
 
-// ===== 数据统计（待成员C完成后端后对接） =====
+// ===== 数据统计（M5） =====
 export const statisticsApi = {
-  // todaySummary() { return api.get('/statistics/today') },
-  // hourlyTraffic() { return api.get('/statistics/hourly') },
-  // weeklyTrend() { return api.get('/statistics/weekly') },
-  // aiPrediction() { return api.get('/statistics/ai-prediction') },
+  /** 今日/本周/本月营收概览 */
+  summary() { return api.get('/statistics/summary') },
+  /** 24小时高峰时段统计 */
+  peakHours() { return api.get('/statistics/peak-hours') },
+  /** 车位占用率趋势 */
+  trend(days = 7) { return api.get('/statistics/trend', { params: { days } }) },
+  /** AI占用率预测 */
+  aiPrediction(hours = 12) { return api.get('/statistics/ai-prediction', { params: { hours } }) },
+  /** 收费趋势 */
+  revenueTrend(period = 'day') { return api.get('/statistics/revenue-trend', { params: { period } }) },
+  /** 导出统计报表（Excel .xlsx） */
+  async exportExcel() {
+    try {
+      const res = await axios.get('http://localhost:8080/api/statistics/export', {
+        baseURL: '',
+        responseType: 'blob',
+        timeout: 30000
+      })
+      // 创建下载链接并自动点击
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', '导出报表.xlsx')
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (e) {
+      console.error('导出失败:', e)
+    }
+  },
 }
 
-// ===== 系统管理（待成员C完成后端后对接） =====
+// ===== 系统管理（M6） =====
 export const systemApi = {
-  // config() { return api.get('/system/config') },
-  // health() { return api.get('/system/health') },
-  // logs() { return api.get('/system/logs') },
-  // backup() { return api.post('/system/backup') },
+  /** 获取所有系统配置 */
+  config() { return api.get('/system/config') },
+  /** 更新配置 */
+  updateConfig(configKey, configValue) {
+    return api.post('/system/config/update', null, { params: { configKey, configValue } })
+  },
+  /** 健康检查 */
+  health() { return api.get('/system/health') },
+  /** 查看日志 */
+  logs(lines = 100) { return api.get('/system/logs', { params: { lines } }) },
+  /** 一键备份 */
+  backup() { window.open('http://localhost:8080/api/system/backup', '_blank') },
 }
 
 export default api
