@@ -60,6 +60,12 @@ async function handleEntry() {
     ElMessage.warning('请输入车牌号')
     return
   }
+  // 校验车牌格式
+  const plateError = plateInputRef.value?.validate?.()
+  if (plateError) {
+    ElMessage.warning(plateError)
+    return
+  }
   loading.value = true
   try {
     const spot = entryForm.value.spotNumber || ''
