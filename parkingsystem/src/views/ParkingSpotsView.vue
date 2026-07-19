@@ -177,93 +177,85 @@ function buildMockZones(spots) {
 }
 
 onMounted(async () => {
-  try {
-    // 并行请求所有接口
-    const [spotRes, heatRes, areaRes, occRes] = await Promise.all([
-      parkingSpotApi.list(),
-      parkingSpotApi.heatmap(),
-      parkingSpotApi.areaCompare(),
-      parkingSpotApi.occupancyRate()
-    ])
+  const [spotRes, heatRes, areaRes, occRes] = await Promise.allSettled([
+    parkingSpotApi.list(),
+    parkingSpotApi.heatmap(),
+    parkingSpotApi.areaCompare(),
+    parkingSpotApi.occupancyRate()
+  ])
 
-    const allSpots = spotRes.data || []
+  // 获取车位列表（必需，没有则用mock）
+  const allSpots = spotRes.status === 'fulfilled' ? (spotRes.value.data || []) : []
 
-    // 如果后端返回空数据，使用 Mock 数据
-    if (!allSpots.length) {
-      const mockSpots = buildMockSpots()
-      stats.value = buildMockStats(mockSpots)
-      heatData.value = buildMockHeatmap(mockSpots)
-      areaData.value = buildMockAreaCompare(mockSpots)
-      zones.value = buildMockZones(mockSpots)
-      return
-    }
-
-    // 1) 处理占用率统计
-    const occ = occRes.data
-    stats.value = {
-      total: occ.total || 0,
-      free: occ.free || 0,
-      occupied: occ.occupied || 0,
-      maintenance: occ.maintenance || 0
-    }
-
-    // 2) 处理热力图数据（按区域统计，无楼层分区）
-    heatData.value = (heatRes.data || []).map(d => ({
-      area: d.area,
-      total: d.total,
-      occupied: d.occupied,
-      rate: d.rate
-    }))
-
-    // 3) 处理区域对比数据
-    areaData.value = (areaRes.data || []).map(d => ({
-      area: d.area,
-      total: d.total,
-      occupied: d.occupied,
-      free: d.free
-    }))
-
-    // 4) 处理车位列表 → 按区域分组
-    const areaMap = {}
-    const areaColors = { A: '#409EFF', B: '#67C23A', C: '#E6A23C', D: '#F56C6C' }
-    allSpots.forEach(spot => {
-      const area = spot.area || 'A'
-      areaMap[area] = areaMap[area] || { name: area, desc: '', color: areaColors[area] || '#909399', spots: [] }
-      const raw = (spot.status || 'FREE').toLowerCase()
-      areaMap[area].spots.push({
-        id: spot.id,
-        label: spot.spotNumber,
-        status: raw
-      })
-    })
-    Object.keys(areaMap).forEach(key => {
-      const spots = areaMap[key].spots
-      areaMap[key].desc = `${spots[0]?.label || ''} ~ ${spots[spots.length - 1]?.label || ''} 号车位`
-    })
-    zones.value = Object.values(areaMap)
-
-    // 5) 加载正在停放的车辆，在占用车位上标注车牌号
-    try {
-      const parkingRes = await vehicleApi.parking()
-      const parkingVehicles = parkingRes.data || []
-      const map = {}
-      parkingVehicles.forEach(v => {
-        if (v.spotNumber) {
-          map[v.spotNumber] = v.plateNumber
-        }
-      })
-      plateMap.value = map
-    } catch (e) {
-      console.warn('获取停放车辆失败:', e.message)
-    }
-
-  } catch (e) {
-    console.warn('后端API调用失败，使用Mock数据:', e.message)
+  if (!allSpots.length) {
+    console.warn('车位接口返回空，使用Mock数据')
     const mockSpots = buildMockSpots()
     stats.value = buildMockStats(mockSpots)
     heatData.value = buildMockHeatmap(mockSpots)
     areaData.value = buildMockAreaCompare(mockSpots)
     zones.value = buildMockZones(mockSpots)
+    return
+  }
+
+  // 1) 处理占用率统计（可选接口）
+  if (occRes.status === 'fulfilled' && occRes.value?.data) {
+    const occ = occRes.value.data
+    stats.value = {
+      total: occ.total || 0,
+      free: occ.free || 0,
+      occupied: occ.occupied || 0,
+      maintenance: 0
+    }
+  } else {
+    const free = allSpots.filter(s => s.status === 'FREE').length
+    const occupied = allSpots.filter(s => s.status === 'OCCUPIED').length
+    stats.value = { total: allSpots.length, free, occupied, maintenance: 0 }
+  }
+
+  // 2) 处理热力图数据（可选接口）
+  if (heatRes.status === 'fulfilled' && heatRes.value?.data?.length) {
+    heatData.value = heatRes.value.data.map(d => ({
+      area: d.area, total: d.total, occupied: d.occupied, rate: d.rate
+    }))
+  } else {
+    heatData.value = buildMockHeatmap(allSpots)
+  }
+
+  // 3) 处理区域对比数据（可选接口）
+  if (areaRes.status === 'fulfilled' && areaRes.value?.data?.length) {
+    areaData.value = areaRes.value.data.map(d => ({
+      area: d.area, total: d.total, occupied: d.occupied, free: d.free
+    }))
+  } else {
+    areaData.value = buildMockAreaCompare(allSpots)
+  }
+
+  // 4) 处理车位列表 → 按区域分组
+  const areaMap = {}
+  const areaColors = { A: '#409EFF', B: '#67C23A', C: '#E6A23C', D: '#F56C6C' }
+  allSpots.forEach(spot => {
+    const area = spot.area || 'A'
+    if (!areaMap[area]) areaMap[area] = { name: area, desc: '', color: areaColors[area] || '#909399', spots: [] }
+    const raw = (spot.status || 'FREE').toLowerCase()
+    areaMap[area].spots.push({ id: spot.id, label: spot.spotNumber, status: raw })
+  })
+  Object.keys(areaMap).forEach(key => {
+    const sp = areaMap[key].spots
+    areaMap[key].desc = `${sp[0]?.label || ''} ~ ${sp[sp.length - 1]?.label || ''} 号车位`
+  })
+  zones.value = Object.values(areaMap)
+
+  // 5) 加载正在停放的车辆
+  try {
+    const parkingRes = await vehicleApi.parking()
+    const parkingVehicles = parkingRes.data || []
+    const map = {}
+    parkingVehicles.forEach(v => {
+      if (v.spotNumber) map[v.spotNumber] = v.plateNumber
+    })
+    plateMap.value = map
+  } catch (e) {
+    console.warn('获取停放车辆失败:', e.message)
   }
 })
 
