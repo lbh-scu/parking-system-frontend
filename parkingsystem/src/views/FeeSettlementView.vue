@@ -25,9 +25,11 @@
                   <div style="font-size:18px;font-weight:500;color:#303133;">{{ vehicle.plate }}</div>
                   <div style="font-size:12px;color:#909399;margin-top:4px;">入场: {{ vehicle.entryTime }}</div>
                 </div>
-                <button @click.stop="handleCalculateFee(vehicle)"
-                  style="background:#E6A23C;color:white;border:none;border-radius:6px;padding:8px 16px;font-size:14px;cursor:pointer;">计算费用</button>
-              </div>
+                <button @click.stop="handleSelectAndCalculate(vehicle)"
+                  style="background:#E6A23C;color:white;border:none;border-radius:6px;padding:8px 16px;font-size:14px;cursor:pointer;">
+                  {{ vehicle.calculated ? '已计算' : '结算' }}
+                </button>
+               </div>
             </div>
           </div>
 
@@ -356,6 +358,13 @@ function selectVehicle(v) {
 function clearSelection() {
   selectedVehicle.value = null
   calculationResult.value = null
+}
+
+// 点击车辆卡片上的"结算"按钮时：先选中该车辆，再自动计算费用
+async function handleSelectAndCalculate(vehicle) {
+  selectedVehicle.value = vehicle
+  calculationResult.value = null
+  await handleCalculateFee(vehicle)
 }
 
 async function handleCalculateFee(vehicle) {

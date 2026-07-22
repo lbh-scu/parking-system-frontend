@@ -4,9 +4,12 @@
       <el-tab-pane label="在场车辆" name="parking">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
           <span style="font-size:14px;color:#606266;">
-            共 <strong style="color:#409EFF;">{{ parkingData.length }}</strong> 辆在场
+            共 <strong style="color:#409EFF;">{{ filteredParkingData.length }}</strong> 辆在场
           </span>
           <div style="display:flex;gap:8px;">
+            <el-input v-model="parkingKeyword" placeholder="输入车牌号查询" clearable style="width:220px" @input="onParkingSearch" @clear="onParkingSearch">
+              <template #prefix><el-icon><Search /></el-icon></template>
+            </el-input>
             <el-button size="small" :loading="loadingParking" @click="loadParking">
               <el-icon><Refresh /></el-icon> 刷新
             </el-button>
@@ -15,7 +18,7 @@
             </el-button>
           </div>
         </div>
-        <el-table v-loading="loadingParking" :data="parkingData" stripe style="width:100%">
+        <el-table v-loading="loadingParking" :data="filteredParkingData" stripe style="width:100%">
           <el-table-column prop="plateNumber" label="车牌号" width="140" />
           <el-table-column prop="spotNumber" label="车位" width="100" />
           <el-table-column prop="entryTime" label="入场时间" />
@@ -32,7 +35,7 @@
             </template>
           </el-table-column>
         </el-table>
-        <el-empty v-if="!loadingParking && parkingData.length === 0" description="暂无在场车辆" />
+        <el-empty v-if="!loadingParking && filteredParkingData.length === 0" description="暂无在场车辆" />
       </el-tab-pane>
       <el-tab-pane label="历史记录" name="history">
         <div style="display:flex;gap:12px;margin-bottom:16px;">
@@ -66,7 +69,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Search, Download } from '@element-plus/icons-vue'
 import { vehicleApi } from '../api/index.js'
@@ -79,6 +82,21 @@ const exitingId = ref(null)
 const historyData = ref([])
 const loadingHistory = ref(false)
 const historyKeyword = ref('')
+const parkingKeyword = ref('')
+
+// 在场车辆 — 按车牌号本地过滤
+const filteredParkingData = computed(() => {
+  const kw = (parkingKeyword.value || '').trim().toUpperCase()
+  if (!kw) return parkingData.value
+  return parkingData.value.filter(v => {
+    const plate = (v.plateNumber || '').toUpperCase()
+    return plate.includes(kw)
+  })
+})
+
+function onParkingSearch() {
+  // 输入时 computed 自动重新计算，无需额外逻辑
+}
 
 onMounted(() => { loadParking() })
 

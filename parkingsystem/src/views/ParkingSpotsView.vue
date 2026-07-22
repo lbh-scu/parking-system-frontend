@@ -5,6 +5,9 @@
         <div class="card-header">
           <el-icon size="20" color="#409EFF"><Grid /></el-icon>
           <span>车位监控</span>
+          <el-button size="small" style="margin-left:auto" @click="refreshData" :loading="loading">
+            <el-icon><Refresh /></el-icon> 刷新
+          </el-button>
         </div>
       </template>
 
@@ -84,7 +87,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Grid, DataAnalysis } from '@element-plus/icons-vue'
+import { Grid, DataAnalysis, Refresh } from '@element-plus/icons-vue'
 import { parkingSpotApi, vehicleApi } from '../api/index.js'
 import HeatMap from '../components/spot/HeatMap.vue'
 import AreaCompare from '../components/spot/AreaCompare.vue'
@@ -92,6 +95,7 @@ import AreaCompare from '../components/spot/AreaCompare.vue'
 const statusMap = { free: '空闲', occupied: '已占', maintenance: '维护' }
 const labelMap = { free: '空闲', occupied: '已占用', maintenance: '维护中' }
 
+const loading = ref(false)
 const stats = ref({ total: 0, free: 0, occupied: 0, maintenance: 0 })
 const heatData = ref([])
 const areaData = ref([])
@@ -176,9 +180,26 @@ function buildMockZones(spots) {
   return Object.values(map)
 }
 
-onMounted(async () => {
+async function loadPlateMap() {
   try {
-    // 并行请求所有接口
+    const parkingRes = await vehicleApi.parking()
+    const parkingVehicles = parkingRes.data || []
+    const map = {}
+    parkingVehicles.forEach(v => {
+      if (v.spotNumber) {
+        map[v.spotNumber] = v.plateNumber
+      }
+    })
+    plateMap.value = map
+  } catch (e) {
+    console.warn('获取停放车辆失败:', e.message)
+    plateMap.value = {}
+  }
+}
+
+async function refreshData() {
+  loading.value = true
+  try {
     const [spotRes, heatRes, areaRes, occRes] = await Promise.all([
       parkingSpotApi.list(),
       parkingSpotApi.heatmap(),
@@ -188,8 +209,11 @@ onMounted(async () => {
 
     const allSpots = spotRes.data || []
 
-    // 如果后端返回空数据，使用 Mock 数据
+    // 加载停放的车辆车牌映射
+    await loadPlateMap()
+
     if (!allSpots.length) {
+      // 后端无数据时使用 Mock
       const mockSpots = buildMockSpots()
       stats.value = buildMockStats(mockSpots)
       heatData.value = buildMockHeatmap(mockSpots)
@@ -207,7 +231,7 @@ onMounted(async () => {
       maintenance: occ.maintenance || 0
     }
 
-    // 2) 处理热力图数据（按区域统计，无楼层分区）
+    // 2) 处理热力图数据
     heatData.value = (heatRes.data || []).map(d => ({
       area: d.area,
       total: d.total,
@@ -241,22 +265,6 @@ onMounted(async () => {
       areaMap[key].desc = `${spots[0]?.label || ''} ~ ${spots[spots.length - 1]?.label || ''} 号车位`
     })
     zones.value = Object.values(areaMap)
-
-    // 5) 加载正在停放的车辆，在占用车位上标注车牌号
-    try {
-      const parkingRes = await vehicleApi.parking()
-      const parkingVehicles = parkingRes.data || []
-      const map = {}
-      parkingVehicles.forEach(v => {
-        if (v.spotNumber) {
-          map[v.spotNumber] = v.plateNumber
-        }
-      })
-      plateMap.value = map
-    } catch (e) {
-      console.warn('获取停放车辆失败:', e.message)
-    }
-
   } catch (e) {
     console.warn('后端API调用失败，使用Mock数据:', e.message)
     const mockSpots = buildMockSpots()
@@ -264,7 +272,13 @@ onMounted(async () => {
     heatData.value = buildMockHeatmap(mockSpots)
     areaData.value = buildMockAreaCompare(mockSpots)
     zones.value = buildMockZones(mockSpots)
+  } finally {
+    loading.value = false
   }
+}
+
+onMounted(() => {
+  refreshData()
 })
 
 const handleSpotClick = (spot) => {

@@ -6,19 +6,37 @@
     </div>
 
     <div class="content-grid">
-      <el-card class="list-card" shadow="never">
+        <el-card class="list-card" shadow="never">
         <template #header>
           <div class="card-header">
             <el-icon size="20" color="#409EFF"><UserFilled /></el-icon>
             <span>住户信息列表</span>
-            <el-tag type="info" effect="plain" class="count-tag">共 {{ residents.length }} 人</el-tag>
+            <el-tag type="info" effect="plain" class="count-tag">共 {{ displayResidents.length }} 人</el-tag>
             <el-button type="success" size="small" @click="handleExport" style="margin-left:8px">
               <el-icon><Download /></el-icon> 导出Excel
             </el-button>
           </div>
         </template>
 
-        <el-table :data="residents" style="width: 100%" stripe>
+        <!-- 搜索栏 -->
+        <div class="search-bar">
+          <el-input
+            v-model="searchPlate"
+            placeholder="输入车牌号查询住户"
+            prefix-icon="Search"
+            clearable
+            style="width: 280px"
+            @keyup.enter="handleSearch"
+          />
+          <el-button type="primary" @click="handleSearch">
+            <el-icon><Search /></el-icon> 查询
+          </el-button>
+          <el-button @click="handleReset">
+            <el-icon><Refresh /></el-icon> 显示全部
+          </el-button>
+        </div>
+
+        <el-table :data="displayResidents" style="width: 100%" stripe>
           <el-table-column prop="id" label="住户ID" width="120" align="center" />
           <el-table-column prop="userName" label="住户姓名" />
           <el-table-column prop="plateNumber" label="车牌号" />
@@ -61,22 +79,26 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { UserFilled, Edit, Plus, InfoFilled, Aim, Download } from '@element-plus/icons-vue'
+import { UserFilled, Edit, Plus, InfoFilled, Aim, Download, Search, Refresh } from '@element-plus/icons-vue'
 import { residentApi } from '../api/index.js'
 
 const residents = ref([])
+const displayResidents = ref([])
 const form = reactive({ name: '', plate: '' })
+const searchPlate = ref('')
 
 // 从后端加载住户列表
 async function loadResidents() {
   try {
     const res = await residentApi.list()
     residents.value = res.data || []
+    displayResidents.value = [...residents.value]
   } catch (e) {
     ElMessage.error('加载住户列表失败：' + e.message)
     residents.value = []
+    displayResidents.value = []
   }
 }
 
@@ -98,6 +120,30 @@ async function handleAdd() {
   } catch (e) {
     ElMessage.error('网络请求失败')
   }
+}
+
+// 根据车牌搜索住户
+async function handleSearch() {
+  const plate = searchPlate.value.trim()
+  if (!plate) {
+    ElMessage.warning('请输入车牌号')
+    return
+  }
+  try {
+    const res = await residentApi.search(plate.toUpperCase())
+    displayResidents.value = res.data || []
+    if (displayResidents.value.length === 0) {
+      ElMessage.info('未找到该车牌对应的住户')
+    }
+  } catch (e) {
+    ElMessage.error('查询失败：' + e.message)
+  }
+}
+
+// 重置显示全部住户
+async function handleReset() {
+  searchPlate.value = ''
+  displayResidents.value = [...residents.value]
 }
 
 // 导出 Excel
@@ -134,6 +180,14 @@ function handleExport() {
   font-weight: 600;
 }
 .count-tag { margin-left: auto; }
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #ebeef5;
+}
 
 .list-card {
   border-radius: 12px;

@@ -237,7 +237,8 @@ async function loadDashboardData() {
 
     // 收费标准统计（今日总收入）
     if (feeStatRes.status === 'fulfilled' && feeStatRes.value?.data != null) {
-      const totalRevenue = parseFloat(feeStatRes.value.data) || 0
+      const data = feeStatRes.value.data
+      const totalRevenue = parseFloat(data.todayRevenue || 0) || 0
       stats.value.todayIncome = totalRevenue.toFixed(2)
     }
 

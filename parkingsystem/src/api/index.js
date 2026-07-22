@@ -8,7 +8,14 @@ const api = axios.create({
 
 // 拦截器：解包 ApiResponse { code, message, data }
 api.interceptors.response.use(
-  res => res.data,
+  res => {
+    // 检查后端返回的 ApiResponse.code，如果不是成功状态码则 reject
+    const body = res.data
+    if (body && body.code !== undefined && body.code !== 200) {
+      return Promise.reject(new Error(body.message || '请求失败'))
+    }
+    return body
+  },
   err => {
     const msg = err.response?.data?.message || err.message || '请求失败'
     return Promise.reject(new Error(msg))
@@ -35,6 +42,9 @@ export const vehicleApi = {
 export const residentApi = {
   list() {
     return api.get('/residents')
+  },
+  search(plateNumber) {
+    return api.get('/residents/search', { params: { plateNumber } })
   },
   add(userName, plateNumber) {
     return axios.create({
