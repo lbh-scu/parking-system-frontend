@@ -199,7 +199,7 @@ function updateTime() {
 
 // ===== 从后端加载真实数据 =====
 const stats = ref({
-  totalSpots: 210, freeSpots: 123, occupiedSpots: 85,
+  totalSpots: 200, freeSpots: 200, occupiedSpots: 0,
   todayIncome: 0, todayCars: 0, inCars: 0, outCars: 0, residents: 0
 })
 
@@ -207,7 +207,7 @@ const recentVehicles = ref([])
 
 async function loadDashboardData() {
   try {
-    // 并行请求：车位总数、当前停车车辆、收费标准统计、住户数量
+    // 并行请求：车位占用率、当前停车车辆、收费标准统计、住户数量
     const [occRes, parkingRes, feeStatRes, residentRes] = await Promise.allSettled([
       parkingSpotApi.occupancyRate(),
       vehicleApi.parking(),
@@ -215,18 +215,19 @@ async function loadDashboardData() {
       residentApi.list()
     ])
 
-    // 车位总数
+    // 车位总数/占用/空闲 —— 从 occupancyRate 接口获取（来自 ParkingSpot 表，与车位监控一致）
     if (occRes.status === 'fulfilled' && occRes.value?.data) {
-      stats.value.totalSpots = occRes.value.data.total || stats.value.totalSpots
+      const data = occRes.value.data
+      stats.value.totalSpots = data.total || stats.value.totalSpots
+      stats.value.occupiedSpots = data.occupied || 0
+      stats.value.freeSpots = data.free || 0
     }
 
-    // 当前停车车辆 -> 计算占用数、最近入场
+    // 当前在场车辆列表 -> 最近入场车辆
     if (parkingRes.status === 'fulfilled' && parkingRes.value?.data) {
       const vehicles = parkingRes.value.data
-      stats.value.occupiedSpots = vehicles.length
-      stats.value.freeSpots = stats.value.totalSpots - vehicles.length
-      stats.value.todayCars = vehicles.length
       stats.value.inCars = vehicles.length
+      stats.value.todayCars = vehicles.length
       // 最近入场车辆（取最近5条）
       recentVehicles.value = vehicles.slice(-5).map(v => ({
         plate: v.plateNumber,
@@ -235,11 +236,13 @@ async function loadDashboardData() {
       })).reverse()
     }
 
-    // 收费标准统计（今日总收入）
+    // 收费标准统计（今日总收入 + 出场车辆数）
     if (feeStatRes.status === 'fulfilled' && feeStatRes.value?.data != null) {
       const data = feeStatRes.value.data
       const totalRevenue = parseFloat(data.todayRevenue || 0) || 0
       stats.value.todayIncome = totalRevenue.toFixed(2)
+      const paidCount = parseInt(data.paidCount || data.todayOrderCount || 0)
+      stats.value.outCars = paidCount
     }
 
     // 住户列表 -> 住户数量
@@ -257,7 +260,9 @@ async function loadDashboardData() {
 }
 
 const occupancyRate = computed(() =>
-  ((stats.value.occupiedSpots / stats.value.totalSpots) * 100).toFixed(0)
+  stats.value.totalSpots > 0
+    ? ((stats.value.occupiedSpots / stats.value.totalSpots) * 100).toFixed(0)
+    : '0'
 )
 
 const quickActions = [

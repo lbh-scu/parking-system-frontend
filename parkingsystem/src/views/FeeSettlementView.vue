@@ -126,7 +126,10 @@
             </div>
             <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #e4e7ed;">
               <span style="color:#606266;">计费规则</span>
-              <span style="font-size:12px;color:#909399;text-align:right;">首小时¥5，之后每小时¥5<br>夜间优惠: ¥3/小时</span>
+              <span style="font-size:12px;color:#909399;text-align:right;">
+                每小时¥{{ feeConfig.hourlyRate }}，免费{{ feeConfig.freeMinutes }}分钟<br>
+                每日封顶: ¥{{ feeConfig.dailyMax }}
+              </span>
             </div>
             <div style="display:flex;justify-content:space-between;padding:20px;background:white;border-radius:8px;margin:10px 0;border:2px solid #E6A23C;">
               <span style="color:#606266;font-weight:500;font-size:18px;">总费用</span>
@@ -218,7 +221,7 @@
       </div>
     </div>
 
-    <!-- 停车收费标准 -->
+    <!-- 停车收费标准（动态展示系统配置值） -->
     <div style="background:white;border-radius:12px;padding:25px;margin-top:30px;box-shadow:0 2px 12px 0 rgba(0,0,0,0.1);">
       <div style="font-size:18px;font-weight:500;margin-bottom:20px;color:#303133;display:flex;align-items:center;gap:10px;">
         <span style="color:#409EFF;">📋</span> 停车收费标准
@@ -229,25 +232,12 @@
             <div style="width:36px;height:36px;background:#67C23A;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-right:12px;">
               <span style="color:white;">💰</span>
             </div>
-            <div style="font-size:16px;font-weight:500;color:#303133;">日间收费标准</div>
+            <div style="font-size:16px;font-weight:500;color:#303133;">收费标准</div>
           </div>
           <div style="color:#606266;line-height:1.6;">
-            <div style="margin-bottom:8px;">• <strong>首小时：</strong>¥5.00</div>
-            <div style="margin-bottom:8px;">• <strong>之后每小时：</strong>¥5.00</div>
+            <div style="margin-bottom:8px;">• <strong>每小时：</strong>¥{{ feeConfig.hourlyRate }}</div>
+            <div style="margin-bottom:8px;">• <strong>免费时长：</strong>{{ feeConfig.freeMinutes }}分钟</div>
             <div>• <strong>不足1小时：</strong>按1小时计算</div>
-          </div>
-        </div>
-        <div style="background:#ecf5ff;border-radius:8px;padding:20px;">
-          <div style="display:flex;align-items:center;margin-bottom:15px;">
-            <div style="width:36px;height:36px;background:#409EFF;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-right:12px;">
-              <span style="color:white;">🌙</span>
-            </div>
-            <div style="font-size:16px;font-weight:500;color:#303133;">夜间收费标准</div>
-          </div>
-          <div style="color:#606266;line-height:1.6;">
-            <div style="margin-bottom:8px;">• <strong>时间段：</strong>22:00 - 次日7:00</div>
-            <div style="margin-bottom:8px;">• <strong>每小时：</strong>¥3.00</div>
-            <div>• <strong>与其他时段分开计费</strong></div>
           </div>
         </div>
         <div style="background:#fdf6ec;border-radius:8px;padding:20px;">
@@ -255,10 +245,10 @@
             <div style="width:36px;height:36px;background:#E6A23C;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-right:12px;">
               <span style="color:white;">🏷️</span>
             </div>
-            <div style="font-size:16px;font-weight:500;color:#303133;">优惠政策</div>
+            <div style="font-size:16px;font-weight:500;color:#303133;">封顶优惠</div>
           </div>
           <div style="color:#606266;line-height:1.6;">
-            <div style="margin-bottom:8px;">• <strong>每日封顶：</strong>¥50.00</div>
+            <div style="margin-bottom:8px;">• <strong>每日封顶：</strong>¥{{ feeConfig.dailyMax }}（停n天封顶 × n）</div>
             <div style="margin-bottom:8px;">• <strong>VIP会员：</strong>9折优惠</div>
             <div>• <strong>月卡用户：</strong>固定¥300/月</div>
           </div>
@@ -271,7 +261,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { feeApi } from '../api/index.js'
+import { feeApi, systemApi } from '../api/index.js'
 
 const exitedVehicles = ref([])
 const selectedVehicle = ref(null)
@@ -280,6 +270,32 @@ const calculationResult = ref(null)
 const showPayment = ref(false)
 const selectedPayment = ref('wechat')
 const currentFeeId = ref(null)
+
+// ===== 从后端系统配置动态获取计费规则 =====
+const feeConfig = ref({
+  hourlyRate: '5.00',
+  freeMinutes: '30',
+  dailyMax: '50.00'
+})
+
+async function loadFeeConfig() {
+  try {
+    const res = await systemApi.config()
+    const configs = res.data || []
+    // configs 是 [{ configKey, configValue, description }] 格式
+    const cfg = {}
+    configs.forEach(item => {
+      cfg[item.configKey] = item.configValue
+    })
+    feeConfig.value = {
+      hourlyRate: cfg.hourly_rate || '5.00',
+      freeMinutes: cfg.free_minutes || '30',
+      dailyMax: cfg.daily_max || '50.00'
+    }
+  } catch (e) {
+    console.warn('获取计费配置失败，使用默认值:', e.message)
+  }
+}
 
 const paymentMethods = [
   { key: 'wechat', label: '微信支付', icon: '💚', color: '#07C160', bg: '#f0faf0' },
@@ -297,6 +313,7 @@ onMounted(() => {
   loadPendingFees()
   loadStatistics()
   loadTodayRecords()
+  loadFeeConfig()
 })
 
 // 从后端加载待结算车辆（通过 /fees/pending 获取状态为 PENDING 的费用记录）
@@ -383,6 +400,8 @@ async function handleCalculateFee(vehicle) {
       hourlyRate: fee.hourlyRate,
       totalFee: '¥' + (fee.totalAmount ? fee.totalAmount.toFixed(2) : '0.00')
     }
+    // 计算完费用后刷新配置，确保计费规则展示最新值
+    await loadFeeConfig()
   } catch (e) {
     ElMessage.error('费用计算失败：' + e.message)
   } finally {
