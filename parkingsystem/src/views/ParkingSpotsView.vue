@@ -118,21 +118,18 @@ function buildMockSpots() {
       })
     }
   }
-  // 随机占用一部分
   const occupied = [3, 7, 12, 15, 19, 23, 28, 31, 35, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76, 80]
   occupied.forEach(i => { if (spots[i]) spots[i].status = 'OCCUPIED' })
   const maintenance = [9, 37, 65]
   maintenance.forEach(i => { if (spots[i]) spots[i].status = 'MAINTENANCE' })
   return spots
 }
-
 function buildMockStats(spots) {
   const free = spots.filter(s => s.status === 'FREE').length
   const occupied = spots.filter(s => s.status === 'OCCUPIED').length
   const maintenance = spots.filter(s => s.status === 'MAINTENANCE').length
   return { total: spots.length, free, occupied, maintenance }
 }
-
 function buildMockHeatmap(spots) {
   const map = {}
   spots.forEach(s => {
@@ -148,7 +145,6 @@ function buildMockHeatmap(spots) {
     rate: d.total ? d.occupied / d.total : 0
   }))
 }
-
 function buildMockAreaCompare(spots) {
   const map = {}
   spots.forEach(s => {
@@ -164,7 +160,6 @@ function buildMockAreaCompare(spots) {
     free: d.free
   }))
 }
-
 function buildMockZones(spots) {
   const areaColors = { A: '#409EFF', B: '#67C23A', C: '#E6A23C', D: '#F56C6C' }
   const map = {}
@@ -179,6 +174,21 @@ function buildMockZones(spots) {
   })
   return Object.values(map)
 }
+function applySpotsToZones(allSpots) {
+  const areaMap = {}
+  const areaColors = { A: '#409EFF', B: '#67C23A', C: '#E6A23C', D: '#F56C6C' }
+  allSpots.forEach(spot => {
+    const area = spot.area || 'A'
+    if (!areaMap[area]) areaMap[area] = { name: area, desc: '', color: areaColors[area] || '#909399', spots: [] }
+    const raw = (spot.status || 'FREE').toLowerCase()
+    areaMap[area].spots.push({ id: spot.id, label: spot.spotNumber, status: raw })
+  })
+  Object.keys(areaMap).forEach(key => {
+    const sp = areaMap[key].spots
+    areaMap[key].desc = `${sp[0]?.label || ''} ~ ${sp[sp.length - 1]?.label || ''} 号车位`
+  })
+  return Object.values(areaMap)
+}
 
 async function loadPlateMap() {
   try {
@@ -186,9 +196,7 @@ async function loadPlateMap() {
     const parkingVehicles = parkingRes.data || []
     const map = {}
     parkingVehicles.forEach(v => {
-      if (v.spotNumber) {
-        map[v.spotNumber] = v.plateNumber
-      }
+      if (v.spotNumber) map[v.spotNumber] = v.plateNumber
     })
     plateMap.value = map
   } catch (e) {
@@ -200,20 +208,18 @@ async function loadPlateMap() {
 async function refreshData() {
   loading.value = true
   try {
-    const [spotRes, heatRes, areaRes, occRes] = await Promise.all([
+    const [spotRes, heatRes, areaRes, occRes] = await Promise.allSettled([
       parkingSpotApi.list(),
       parkingSpotApi.heatmap(),
       parkingSpotApi.areaCompare(),
       parkingSpotApi.occupancyRate()
     ])
 
-    const allSpots = spotRes.data || []
-
-    // 加载停放的车辆车牌映射
-    await loadPlateMap()
+    // 获取车位列表（必需，没有则用mock）
+    const allSpots = spotRes.status === 'fulfilled' ? (spotRes.value.data || []) : []
 
     if (!allSpots.length) {
-      // 后端无数据时使用 Mock
+      console.warn('车位接口返回空，使用Mock数据')
       const mockSpots = buildMockSpots()
       stats.value = buildMockStats(mockSpots)
       heatData.value = buildMockHeatmap(mockSpots)
@@ -222,51 +228,46 @@ async function refreshData() {
       return
     }
 
-    // 1) 处理占用率统计
-    const occ = occRes.data
-    stats.value = {
-      total: occ.total || 0,
-      free: occ.free || 0,
-      occupied: occ.occupied || 0,
-      maintenance: occ.maintenance || 0
+    // 1) 处理占用率统计（可选接口）
+    if (occRes.status === 'fulfilled' && occRes.value?.data) {
+      const occ = occRes.value.data
+      stats.value = {
+        total: occ.total || 0,
+        free: occ.free || 0,
+        occupied: occ.occupied || 0,
+        maintenance: occ.maintenance || 0
+      }
+    } else {
+      const free = allSpots.filter(s => s.status === 'FREE').length
+      const occupied = allSpots.filter(s => s.status === 'OCCUPIED').length
+      stats.value = { total: allSpots.length, free, occupied, maintenance: 0 }
     }
 
-    // 2) 处理热力图数据
-    heatData.value = (heatRes.data || []).map(d => ({
-      area: d.area,
-      total: d.total,
-      occupied: d.occupied,
-      rate: d.rate
-    }))
+    // 2) 处理热力图数据（可选接口）
+    if (heatRes.status === 'fulfilled' && heatRes.value?.data?.length) {
+      heatData.value = heatRes.value.data.map(d => ({
+        area: d.area, total: d.total, occupied: d.occupied, rate: d.rate
+      }))
+    } else {
+      heatData.value = buildMockHeatmap(allSpots)
+    }
 
-    // 3) 处理区域对比数据
-    areaData.value = (areaRes.data || []).map(d => ({
-      area: d.area,
-      total: d.total,
-      occupied: d.occupied,
-      free: d.free
-    }))
+    // 3) 处理区域对比数据（可选接口）
+    if (areaRes.status === 'fulfilled' && areaRes.value?.data?.length) {
+      areaData.value = areaRes.value.data.map(d => ({
+        area: d.area, total: d.total, occupied: d.occupied, free: d.free
+      }))
+    } else {
+      areaData.value = buildMockAreaCompare(allSpots)
+    }
 
     // 4) 处理车位列表 → 按区域分组
-    const areaMap = {}
-    const areaColors = { A: '#409EFF', B: '#67C23A', C: '#E6A23C', D: '#F56C6C' }
-    allSpots.forEach(spot => {
-      const area = spot.area || 'A'
-      areaMap[area] = areaMap[area] || { name: area, desc: '', color: areaColors[area] || '#909399', spots: [] }
-      const raw = (spot.status || 'FREE').toLowerCase()
-      areaMap[area].spots.push({
-        id: spot.id,
-        label: spot.spotNumber,
-        status: raw
-      })
-    })
-    Object.keys(areaMap).forEach(key => {
-      const spots = areaMap[key].spots
-      areaMap[key].desc = `${spots[0]?.label || ''} ~ ${spots[spots.length - 1]?.label || ''} 号车位`
-    })
-    zones.value = Object.values(areaMap)
+    zones.value = applySpotsToZones(allSpots)
+
+    // 5) 加载车牌映射
+    await loadPlateMap()
   } catch (e) {
-    console.warn('后端API调用失败，使用Mock数据:', e.message)
+    console.warn('refreshData 异常:', e.message)
     const mockSpots = buildMockSpots()
     stats.value = buildMockStats(mockSpots)
     heatData.value = buildMockHeatmap(mockSpots)
