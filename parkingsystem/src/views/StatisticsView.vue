@@ -227,7 +227,10 @@ async function loadPrediction() {
         predictMap[label] = d.predictedRate
       })
 
-      allHours.sort((a, b) => parseInt(a) - parseInt(b))
+      // 注意：不要按数值排序！因为预测序列是从当前小时开始的连续跨天序列
+      // 例如 14,15,16,17,18,19,20,21,22,23,0,1 需要保持原始时序
+      // 不能排序成 0,1,14,15,...,23 这会打乱预测线的时序
+      // allHours.sort((a, b) => parseInt(a) - parseInt(b))
 
       const historyRates = allHours.map(h => historyMap[h] !== undefined ? historyMap[h] : null)
       const predictRates = allHours.map(h => predictMap[h] !== undefined ? predictMap[h] : null)
