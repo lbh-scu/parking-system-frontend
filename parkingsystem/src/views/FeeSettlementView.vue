@@ -360,7 +360,7 @@ async function loadStatistics() {
     const data = res.data || {}
     todayStats.value = {
       total: (data.todayRevenue || 0).toFixed(2),
-      vehicleCount: String(data.paidCount || data.todayOrderCount || 0)
+      vehicleCount: String(data.todayOrderCount != null ? data.todayOrderCount : 0)
     }
   } catch (e) {
     console.warn('获取统计失败：' + e.message)
