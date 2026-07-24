@@ -35,6 +35,9 @@ export const vehicleApi = {
   },
   history(plateNumber) {
     return api.get('/vehicles/history', { params: { plateNumber: plateNumber || undefined } })
+  },
+  todayStats() {
+    return api.get('/vehicles/today-stats')
   }
 }
 

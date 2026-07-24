@@ -181,11 +181,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import { Van, CircleCheck, Remove, Money, Opportunity, List, DataBoard, Clock } from '@element-plus/icons-vue'
 import { vehicleApi, feeApi, residentApi, parkingSpotApi } from '../api/index.js'
+
+const route = useRoute()
 
 const gaugeRef = ref(null)
 let gaugeChart = null
@@ -207,9 +210,10 @@ const recentVehicles = ref([])
 
 async function loadDashboardData() {
   try {
-    // 并行请求：车位占用率、当前停车车辆、收费标准统计、住户数量
-    const [occRes, parkingRes, feeStatRes, residentRes] = await Promise.allSettled([
+    // 并行请求：车位占用率、今日出入统计、当前停车车辆、收费标准统计、住户数量
+    const [occRes, todayStatsRes, parkingRes, feeStatRes, residentRes] = await Promise.allSettled([
       parkingSpotApi.occupancyRate(),
+      vehicleApi.todayStats(),
       vehicleApi.parking(),
       feeApi.statistics(),
       residentApi.list()
@@ -223,11 +227,17 @@ async function loadDashboardData() {
       stats.value.freeSpots = data.free || 0
     }
 
+    // 今日出入场统计（从 vehicle 表按 entryTime/exitTime 统计）
+    if (todayStatsRes.status === 'fulfilled' && todayStatsRes.value?.data) {
+      const data = todayStatsRes.value.data
+      stats.value.inCars = parseInt(data.inCars || 0)
+      stats.value.outCars = parseInt(data.outCars || 0)
+      stats.value.todayCars = parseInt(data.todayCars || 0)
+    }
+
     // 当前在场车辆列表 -> 最近入场车辆
     if (parkingRes.status === 'fulfilled' && parkingRes.value?.data) {
       const vehicles = parkingRes.value.data
-      stats.value.inCars = vehicles.length
-      stats.value.todayCars = vehicles.length
       // 最近入场车辆（取最近5条）
       recentVehicles.value = vehicles.slice(-5).map(v => ({
         plate: v.plateNumber,
@@ -236,13 +246,11 @@ async function loadDashboardData() {
       })).reverse()
     }
 
-    // 收费标准统计（今日总收入 + 出场车辆数）
+    // 收费标准统计（今日总收入）
     if (feeStatRes.status === 'fulfilled' && feeStatRes.value?.data != null) {
       const data = feeStatRes.value.data
       const totalRevenue = parseFloat(data.todayRevenue || 0) || 0
       stats.value.todayIncome = totalRevenue.toFixed(2)
-      const paidCount = parseInt(data.paidCount || data.todayOrderCount || 0)
-      stats.value.outCars = paidCount
     }
 
     // 住户列表 -> 住户数量
@@ -276,9 +284,15 @@ onMounted(() => {
   updateTime()
   setInterval(updateTime, 1000)
   gaugeChart = echarts.init(gaugeRef.value)
-  loadDashboardData()
   window.addEventListener('resize', handleResize)
 })
+
+// 每次回到首页时重新加载数据（在车辆管理页面操作入场/出场后返回时生效）
+watch(() => route.path, (newPath) => {
+  if (newPath === '/') {
+    loadDashboardData()
+  }
+}, { immediate: true })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
